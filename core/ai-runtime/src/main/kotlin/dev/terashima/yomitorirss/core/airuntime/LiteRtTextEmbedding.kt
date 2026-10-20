@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.core.background.LocalAiBackgroundTaskPriority
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import dev.terashima.yomitorirss.core.network.TrafficTelemetry
 import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -69,10 +70,11 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
       readTimeout = 60_000
       instanceFollowRedirects = true
     }
+    var downloadedBytes = 0L
     try {
       check(connection.responseCode in 200..299) { "embedding model download failed" }
       connection.inputStream.use { input ->
-        temporary.outputStream().buffered().use { output -> input.copyTo(output) }
+        temporary.outputStream().buffered().use { output -> downloadedBytes = input.copyTo(output) }
       }
       check(matchesSha256(temporary, MODEL_SHA256)) { "embedding model checksum mismatch" }
       check(temporary.renameTo(file)) { "failed to store embedding model" }
@@ -81,6 +83,7 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
       }
     } finally {
       connection.disconnect()
+      TrafficTelemetry.record("model", downloadedBytes, 0L)
       temporary.delete()
     }
     file

@@ -19,6 +19,7 @@ import java.io.File
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import dev.terashima.yomitorirss.core.network.TrafficTelemetry
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -190,10 +191,10 @@ class LocalModelManager(context: Context) : AutoCloseable {
       val temporary = temporaryModelFile(model)
       temporary.delete()
       var connection: HttpURLConnection? = null
+      var downloadedBytes = 0L
       try {
         connection = openModelDownloadConnection(model.downloadUrl)
         val totalBytes = connection.contentLengthLong.takeIf { it > 0 } ?: model.estimatedSizeBytes
-        var downloadedBytes = 0L
         var lastProgressAt = 0L
         val startedAt = SystemClock.elapsedRealtime()
         _downloadProgress.value = ModelDownloadProgress(model.id, "downloading", 0, totalBytes)
@@ -234,6 +235,7 @@ class LocalModelManager(context: Context) : AutoCloseable {
         throw IllegalStateException("モデルのダウンロードに失敗しました: ${error.message.orEmpty()}", error)
       } finally {
         connection?.disconnect()
+        TrafficTelemetry.record("model", downloadedBytes, 0L)
       }
     }
   }

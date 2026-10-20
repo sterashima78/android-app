@@ -19,6 +19,7 @@ android {
 dependencies {
   implementation(project(":core:ai-inference"))
   implementation(project(":core:background"))
+  implementation(project(":core:network"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
   implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
