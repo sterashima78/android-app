@@ -5,6 +5,7 @@ import android.app.Application
 import dev.terashima.yomitorirss.composition.ai.AppAiCoreRuntimeDependencies
 import dev.terashima.yomitorirss.composition.audio.AppAudioRuntimeDependencies
 import dev.terashima.yomitorirss.composition.background.AppBackgroundRuntime
+import dev.terashima.yomitorirss.composition.background.AndroidTrafficUsageRepository
 import dev.terashima.yomitorirss.composition.content.AppContentRuntimeDependencies
 import dev.terashima.yomitorirss.composition.crossfeature.AppCrossFeatureRuntimeDependencies
 import dev.terashima.yomitorirss.composition.entry.SharedContentEntryCapability
@@ -21,6 +22,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.database.PersistenceChangeNotifier
 import dev.terashima.yomitorirss.core.database.YomitoriDatabase
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.core.network.TrafficTelemetry
 import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
 
 /**
@@ -35,6 +37,12 @@ class AppContainer(
   private val appVersionName: String,
   private val resumedActivityProvider: () -> Activity? = { null },
 ) {
+  internal val trafficUsageReader = AndroidTrafficUsageRepository(application)
+
+  init {
+    TrafficTelemetry.recorder = trafficUsageReader::record
+  }
+
   private val dataChanges = DataChangeNotifier.shared
   private val persistenceChanges = PersistenceChangeNotifier.shared
 
