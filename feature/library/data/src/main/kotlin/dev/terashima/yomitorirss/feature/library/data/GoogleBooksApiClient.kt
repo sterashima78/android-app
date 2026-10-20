@@ -27,6 +27,7 @@ internal class GoogleBooksApiClient(
     while (true) {
       val response = httpClient.execute(
         HttpRequest(
+          trafficTag = "library",
           url = "$BASE_URL/mylibrary/bookshelves/$shelf/volumes" +
             "?startIndex=$startIndex&maxResults=$PAGE_SIZE&projection=full&showPreorders=true",
           headers = mapOf(

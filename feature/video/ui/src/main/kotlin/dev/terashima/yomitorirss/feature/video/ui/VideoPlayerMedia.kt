@@ -43,7 +43,7 @@ internal fun createVideoPlayerMedia(
         .setUserAgent(userAgent)
         .setDefaultRequestProperties(requestProperties)
       builder.setMediaSourceFactory(
-        DefaultMediaSourceFactory(context).setDataSourceFactory(dataSourceFactory),
+        DefaultMediaSourceFactory(context).setDataSourceFactory(TrafficVideoDataSourceFactory(dataSourceFactory)),
       )
     }
     is VideoPlaybackTarget.Smb -> builder.setMediaSourceFactory(

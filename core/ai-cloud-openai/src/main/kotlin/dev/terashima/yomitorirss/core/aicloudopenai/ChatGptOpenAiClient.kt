@@ -114,6 +114,7 @@ class ChatGptOpenAiClient internal constructor(
   suspend fun startDeviceLogin(): ChatGptDeviceLogin {
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "cloud_ai",
         url = "${config.authBaseUrl.trimEnd('/')}/api/accounts/deviceauth/usercode",
         method = HttpMethod.POST,
         body = buildJsonObject { put("client_id", JsonPrimitive(config.clientId)) }
@@ -145,6 +146,7 @@ class ChatGptOpenAiClient internal constructor(
     if (clockMillis() >= login.expiresAtEpochMillis) error("ChatGPT device login expired. Start a new login.")
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "cloud_ai",
         url = "${config.authBaseUrl.trimEnd('/')}/api/accounts/deviceauth/token",
         method = HttpMethod.POST,
         body = buildJsonObject {
@@ -290,6 +292,7 @@ class ChatGptOpenAiClient internal constructor(
 
   private suspend fun postTokenForm(fields: Map<String, String>): HttpResponse = httpClient.execute(
     HttpRequest(
+      trafficTag = "cloud_ai",
       url = "${config.authBaseUrl.trimEnd('/')}/oauth/token",
       method = HttpMethod.POST,
       body = formEncode(fields).toByteArray(StandardCharsets.UTF_8),
@@ -312,6 +315,7 @@ class ChatGptOpenAiClient internal constructor(
 
   private suspend fun executeListModels(credentials: ChatGptCredentials): HttpResponse = httpClient.execute(
     HttpRequest(
+      trafficTag = "cloud_ai",
       url = resolveCodexModelsUrl(config.codexBaseUrl),
       headers = authenticatedHeaders(credentials) + mapOf("Accept" to "application/json"),
       maxResponseBytes = MAX_MODELS_BODY_BYTES.toLong(),
@@ -359,6 +363,7 @@ class ChatGptOpenAiClient internal constructor(
     }
     return httpClient.execute(
       HttpRequest(
+        trafficTag = "cloud_ai",
         url = resolveCodexResponsesUrl(config.codexBaseUrl),
         headers = authenticatedHeaders(credentials) + mapOf("Accept" to "text/event-stream"),
         method = HttpMethod.POST,
@@ -401,6 +406,7 @@ class ChatGptOpenAiClient internal constructor(
     }
     return httpClient.execute(
       HttpRequest(
+        trafficTag = "cloud_ai",
         url = resolveCodexResponsesUrl(config.codexBaseUrl),
         headers = authenticatedHeaders(credentials) + mapOf("Accept" to "text/event-stream"),
         method = HttpMethod.POST,

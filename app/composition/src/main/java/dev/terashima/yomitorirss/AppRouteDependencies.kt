@@ -32,6 +32,7 @@ class AppRouteDependencies(
   val backupViewModelFactory get() = supporting.backupViewModelFactory
   val aiSettingsViewModelFactory get() = supporting.aiSettingsViewModelFactory
   val aiTaskQueueRepository get() = supporting.aiTaskQueueRepository
+  val trafficUsageReader get() = container.trafficUsageReader
   val assetViewModelFactory get() = supporting.assetViewModelFactory
   val health get() = supporting.health
   val taskViewModelFactory get() = supporting.taskViewModelFactory

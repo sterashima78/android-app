@@ -52,6 +52,7 @@ fun SettingsContent(
   onOpenAiExecutionSettings: () -> Unit,
   onOpenSummaryPrompt: () -> Unit,
   onOpenAiTaskQueue: () -> Unit,
+  onOpenTrafficUsage: () -> Unit,
   onOpenDriveBackup: () -> Unit,
   onExportBackup: () -> Unit,
   onImportBackup: () -> Unit,
@@ -114,6 +115,14 @@ fun SettingsContent(
         supporting = "RSS・メール・表紙・AIモデルのバックグラウンド取得を Wi-Fi 接続中に限定",
         checked = backgroundFetchWifiOnly,
         onCheckedChange = onBackgroundFetchWifiOnlyChange,
+      )
+    }
+    item {
+      SettingsRow(
+        icon = Icons.Default.List,
+        title = "通信量の分析",
+        supporting = "Wi-Fi・モバイル別の通信量と機能別の内訳",
+        onClick = onOpenTrafficUsage,
       )
     }
     item { SettingsDivider() }

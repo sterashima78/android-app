@@ -10,6 +10,7 @@ internal class GmailAccountProfileClient(
   suspend fun email(accessToken: String): String {
     val response = httpClient.execute(
       HttpRequest(
+        trafficTag = "mail",
         url = PROFILE_URL,
         headers = mapOf(
           "Authorization" to "Bearer $accessToken",

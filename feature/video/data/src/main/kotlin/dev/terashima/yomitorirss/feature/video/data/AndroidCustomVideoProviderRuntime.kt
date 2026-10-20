@@ -408,6 +408,7 @@ internal class AndroidCustomVideoProviderRuntime(
         require(it.length <= MAX_HEADER_VALUE_CHARS) { "Content-Typeが長すぎます" }
       }
       return HttpRequest(
+        trafficTag = "video",
         url = url,
         method = method,
         headers = headers,

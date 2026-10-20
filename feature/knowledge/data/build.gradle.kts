@@ -23,6 +23,7 @@ dependencies {
   implementation(project(":feature:summary:domain"))
   implementation(project(":core:background"))
   implementation(project(":core:database"))
+  implementation(project(":core:network"))
   implementation(project(":core:ai-inference"))
   implementation(project(":core:ai-cloud-openai"))
 

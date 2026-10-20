@@ -18,6 +18,7 @@ import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.library.SmbConnectionProfileRepository
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
 import dev.terashima.yomitorirss.feature.settings.SettingsFeatureScreen
+import dev.terashima.yomitorirss.feature.settings.TrafficUsageReader
 import java.time.LocalDate
 
 @Composable
@@ -26,6 +27,7 @@ internal fun SettingsRoute(
   backupViewModel: BackupViewModel,
   aiSettingsViewModel: AiSettingsViewModel,
   aiTaskQueueRepository: AiTaskQueueRepository,
+  trafficUsageReader: TrafficUsageReader,
   smbConnectionProfileRepository: SmbConnectionProfileRepository,
   initialBackgroundFetchWifiOnly: Boolean,
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
@@ -64,6 +66,7 @@ internal fun SettingsRoute(
     backupViewModel = backupViewModel,
     aiSettingsViewModel = aiSettingsViewModel,
     aiTaskQueueRepository = aiTaskQueueRepository,
+    trafficUsageReader = trafficUsageReader,
     smbConnectionProfileRepository = smbConnectionProfileRepository,
     initialBackgroundFetchWifiOnly = initialBackgroundFetchWifiOnly,
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
