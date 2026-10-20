@@ -73,13 +73,16 @@ internal fun TrafficUsageDialog(reader: TrafficUsageReader, onDismiss: () -> Uni
             val result = requireNotNull(overview)
             val visible = result.records.filter { transport == "all" || it.transport == transport }
             val counted = visible.sumOf(TrafficUsageRecord::totalBytes)
-            Text("機能別の計測合計: ${formatBytes(counted)}")
+            val received = visible.sumOf(TrafficUsageRecord::receivedBytes)
+            val sent = visible.sumOf(TrafficUsageRecord::sentBytes)
+            Text("計測合計: ${formatBytes(counted)}")
+            Text("受信: ${formatBytes(received)} / 送信: ${formatBytes(sent)}")
+            val mobile = result.systemMobileBytes
+            val wifi = result.systemWifiBytes
             val os = when (transport) {
-              "mobile" -> result.systemMobileBytes
-              "wifi" -> result.systemWifiBytes
-              else -> if (result.systemMobileBytes != null && result.systemWifiBytes != null) {
-                result.systemMobileBytes + result.systemWifiBytes
-              } else null
+              "mobile" -> mobile
+              "wifi" -> wifi
+              else -> if (mobile != null && wifi != null) mobile + wifi else null
             }
             if (os == null) {
               Text("OS集計: この端末では取得できません")
