@@ -224,15 +224,16 @@ Sources: [ADR-0275](../adr/0275-formal-specification-with-quint-and-alloy.md)
 
 ## CI baseline
 
-Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の5 checkを独立して実行する。repository ruleset の required status checks は先頭4つとし、R8 は release shrinker とサイズ回帰を早期検出する追加検証として実行する。
+Pull Request の品質 gate は `.github/workflows/check.yml` が所有し、次の6 checkを独立して実行する。repository ruleset の required status checks は別途設定された4件とし、Instrumentation Compileは端末なしのAndroidテストコンパイル検証、R8はrelease shrinkerとサイズ回帰を早期検出する追加検証として実行する。
 
 - `Public repository`: public repository verifier の unit test と tracked content scan
 - `Architecture`: Gradle metadata verifier、table/ownership verifier、Gradle `verifyArchitecture`、Quint / Alloy formal specification verification
 - `Test`: `./gradlew --no-daemon test`
 - `Lint`: `./gradlew --no-daemon :app:lintRelease`
+- `Instrumentation Compile`: `./gradlew --no-daemon :app:compileDebugAndroidTestKotlin`。端末上でのテスト実行は含まない
 - `R8`: `./gradlew --no-daemon :app:minifyReleaseWithR8`。base branch と minified DEX 合計を比較し、10%以上の増加は warning として可視化する
 
-Android の4検証は matrix で `fail-fast: false` とし、1つが失敗しても他の結果を取得する。従来の `quality` 集約 job は置かず、GitHub repository ruleset から4 checkを直接 required status checks とする。ADR integrity は path filter 付きの独立 workflow にせず、常時実行される `Architecture` check に含める。
+Android の5検証は matrix で `fail-fast: false` とし、1つが失敗しても他の結果を取得する。従来の `quality` 集約 job は置かず、GitHub repository ruleset から4 checkを直接 required status checks とする。ADR integrity は path filter 付きの独立 workflow にせず、常時実行される `Architecture` check に含める。
 
 ```bash
 python3 scripts/test_verify_public_repository.py
