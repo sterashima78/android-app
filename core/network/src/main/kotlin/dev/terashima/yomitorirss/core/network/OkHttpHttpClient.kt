@@ -8,6 +8,7 @@ import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -31,6 +32,8 @@ internal class OkHttpHttpClient(
       .method(request.method.name, requestBody)
       .build()
 
+    val tag = coroutineContext[TrafficAttribution]?.tag ?: request.trafficTag
+    var receivedBytes = 0L
     try {
       client.newCall(okhttpRequest).execute().use { response ->
         val maxResponseBytes = if (response.isSuccessful) {
@@ -56,6 +59,7 @@ internal class OkHttpHttpClient(
               val readBytes = input.read(buffer)
               if (readBytes == -1) break
               totalBytes += readBytes
+              receivedBytes += readBytes
               if (totalBytes > maxResponseBytes) {
                 throw ResponseTooLargeException(maxResponseBytes, contentLength.takeIf { it >= 0L })
               }
@@ -67,6 +71,9 @@ internal class OkHttpHttpClient(
       }
     } catch (error: IOException) {
       throw error.toNetworkError()
+    } finally {
+      // Decoded payload bytes, not IP-layer bytes; partial responses are included.
+      TrafficTelemetry.record(tag, receivedBytes, request.body?.size?.toLong() ?: 0L)
     }
   }
 }
