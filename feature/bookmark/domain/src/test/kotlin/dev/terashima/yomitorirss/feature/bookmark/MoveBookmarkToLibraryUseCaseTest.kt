@@ -50,7 +50,7 @@ class MoveBookmarkToLibraryUseCaseTest {
       override suspend fun moveArticleToFolder(articleId: String, folderId: String?) = Unit
       override suspend fun replaceArticleTags(articleId: String, tagIds: Set<String>) = Unit
       override suspend fun saveAndReadArticle(articleId: String) = Unit
-      override suspend fun markReadLater(articleId: String) = Unit
+      override suspend fun markReadLater(articleId: String) = true
       override suspend fun unsaveArticle(articleId: String) {
         events += "bookmark:unsave"
       }

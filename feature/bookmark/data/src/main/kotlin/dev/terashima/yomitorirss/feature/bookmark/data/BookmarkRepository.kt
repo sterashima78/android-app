@@ -115,13 +115,16 @@ class DefaultBookmarkRepository(
     notifyNewBookmark(articleId, wasBookmarked)
   }
 
-  override suspend fun markReadLater(articleId: String) {
+  override suspend fun markReadLater(articleId: String): Boolean = reviewMutationMutex.withLock {
     val wasBookmarked = stateStore.isBookmarked(articleId)
-    articleGateway.markRead(articleId)
-    stateStore.save(articleId)
-    associationStore.addReadLater(articleId)
+    val newlyAdded = database.transaction {
+      articleGateway.markRead(articleId)
+      stateStore.save(articleId)
+      associationStore.addReadLater(articleId)
+    }
     dataChanges.notifyChanged()
     notifyNewBookmark(articleId, wasBookmarked)
+    newlyAdded
   }
 
   override suspend fun unsaveArticle(articleId: String) {

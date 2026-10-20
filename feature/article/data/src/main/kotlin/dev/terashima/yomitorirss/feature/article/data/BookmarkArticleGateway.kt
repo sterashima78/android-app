@@ -12,7 +12,7 @@ class DefaultBookmarkArticleGateway(
   private val database: DatabaseConnection,
   private val articleContentClient: ArticleContentClient = ArticleContentClient(),
 ) : BookmarkArticleGateway {
-  override suspend fun markRead(articleId: String) {
+  override fun markRead(articleId: String) {
     val updated = database.write {
       update(
         "articles",

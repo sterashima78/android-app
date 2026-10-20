@@ -96,9 +96,9 @@ Library Context の fresh DB schema は `LibraryDatabaseSchema.kt` から到達�
 
 SMB connection profile は `smb_connection_profiles` に name / host / port / username / domain を保存し、password は従来と同じ backup 対象外の app-private encrypted credential storeへ保存する。`smb_library_servers` はLibrary用share / root pathと既存Library runtime向けのconnection projectionとして維持する。全体設定でprofileを作成してもLibrary locationが未設定なら `smb_library_servers` rowは不要であり、Library設定でshare / root pathを保存したときだけLibrary同期対象になる。
 
-version 28以前の `smb_library_servers` rowはschema初期化時に同じIDで `smb_connection_profiles` へ取り込む。credential keyはIDを維持するためpasswordの再暗号化や再入力は不要である。
+旧versionから `smb_library_servers` を `smb_connection_profiles` へ複製する一度限りの互換処理は現行baselineから退役した。既存のconnection profileは通常の永続データとしてそのまま利用する。
 
-`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒で、既存 database に column がない場合は Library の idempotent schema initializer が `timeout_seconds` を additive に追加する。この additive schema refinement だけを理由としたdatabase version bumpは行わない。
+`web_library_metadata_extractors` は Web Library の title / thumbnail 取得方法を端末上で変更する durable user data で、URL pattern、Promise を返す JavaScript function code、WebView 全体の timeout 秒数、更新日時を保存する。function code は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは Library-owned `WebLibraryMetadataExtractorRepository` capability を経由する。timeout は既定 15 秒であり、現在のLibrary schema initializerは `timeout_seconds` を含む形式を直接確保する。旧column欠落を補修するruntime互換分岐は保持しない。
 
 `DefaultLibraryRepository.snapshot()` は Library snapshot を取得する read operation であり、他 Repository / Worker が schema 初期化のために呼び出さない。単体 SMB 書籍が必要な処理は catalog query を直接利用し、必要な schema 初期化も catalog initializer を明示的に呼ぶ。
 
@@ -132,7 +132,7 @@ stream URL、再生時のreferrer / origin / user agent / Cookie値、動画フ�
 
 ADR-0241では `video_web_extractor_rules` に `share_cookies_for_playback INTEGER NOT NULL DEFAULT 0` をadditiveに追加する。fresh schemaはcolumnを最初から持ち、既存databaseはVideoのidempotent schema initializerが不足列だけを追加する。既存rowはdefault 0でCookie共有OFFとなる。このadditive refinementだけを理由としたdatabase version bumpは行わない。
 
-`video_providers.function_code` を含む現行provider schemaはfresh schemaとidempotent initializerで保証する。旧versionからの一度限りmigration詳細はADR-0246に履歴として保持し、現行compatibility baselineのruntime pathとしては扱わない。
+`video_providers.function_code` を含む現在のprovider schemaはfresh schemaで直接作成する。旧versionからの一度限りmigration詳細はADR-0246に履歴として保持し、現行compatibility baselineのruntime pathとしては扱わない。
 
 ### Podcast schema
 

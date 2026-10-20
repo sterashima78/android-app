@@ -55,7 +55,6 @@ internal fun applyConfirmedSmbMetadata(
   books: List<LibraryBook>,
 ): List<LibraryBook> {
   if (books.none { it.source == LibrarySource.SMB }) return books
-  ensureSmbMetadataNormalizationSchema(database.writable)
   val overrides = database.readable.rawQuery(
     """
       SELECT source_id, title, authors_json, publisher, published_date, isbn10, isbn13
@@ -129,15 +128,6 @@ internal fun ensureSmbMetadataNormalizationSchema(db: SQLiteDatabase) {
       )
     """.trimIndent(),
   )
-  val itemColumns = db.rawQuery("PRAGMA table_info($SMB_NORMALIZATION_ITEM_TABLE)", null).use { cursor ->
-    buildSet {
-      val nameIndex = cursor.getColumnIndexOrThrow("name")
-      while (cursor.moveToNext()) add(cursor.getString(nameIndex))
-    }
-  }
-  if ("reanalysis_context" !in itemColumns) {
-    db.execSQL("ALTER TABLE $SMB_NORMALIZATION_ITEM_TABLE ADD COLUMN reanalysis_context TEXT")
-  }
   db.execSQL(
     "CREATE INDEX IF NOT EXISTS idx_smb_metadata_normalization_status ON $SMB_NORMALIZATION_ITEM_TABLE(status, updated_at)",
   )
@@ -164,7 +154,6 @@ internal fun migrateSmbMetadataNormalizationIdentity(
   renamedSourceId: String,
 ) {
   if (originalSourceId == renamedSourceId) return
-  ensureSmbMetadataNormalizationSchema(db)
   db.update(
     SMB_NORMALIZATION_DECISION_TABLE,
     ContentValues().apply { put("source_id", renamedSourceId) },
@@ -180,7 +169,6 @@ internal fun migrateSmbMetadataNormalizationIdentity(
 }
 
 internal fun deleteSmbMetadataNormalizationIdentity(db: SQLiteDatabase, sourceId: String) {
-  ensureSmbMetadataNormalizationSchema(db)
   db.delete(SMB_NORMALIZATION_DECISION_TABLE, "source_id = ?", arrayOf(sourceId))
   db.delete(SMB_NORMALIZATION_ITEM_TABLE, "source_id = ?", arrayOf(sourceId))
 }

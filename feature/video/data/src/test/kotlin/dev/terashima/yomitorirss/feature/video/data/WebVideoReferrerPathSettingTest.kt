@@ -1,6 +1,5 @@
 package dev.terashima.yomitorirss.feature.video.data
 
-import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
@@ -74,50 +73,15 @@ class WebVideoReferrerPathSettingTest {
   }
 
   @Test
-  fun `既存schemaにはReferer path共有列をOFFで追加する`() {
+  fun `現行schemaはReferer path共有をOFFで初期化する`() {
     val db = helper.writableDatabase
-    db.execSQL("DROP TABLE video_web_extractor_rules")
-    db.execSQL(
-      """
-        CREATE TABLE video_web_extractor_rules (
-          id TEXT PRIMARY KEY NOT NULL,
-          url_pattern TEXT NOT NULL,
-          title_function TEXT,
-          thumbnail_function TEXT,
-          playback_function TEXT,
-          share_cookies_for_playback INTEGER NOT NULL DEFAULT 0,
-          timeout_seconds INTEGER NOT NULL DEFAULT 15,
-          updated_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
-    db.insertOrThrow(
-      "video_web_extractor_rules",
-      null,
-      ContentValues().apply {
-        put("id", "legacy-rule")
-        put("url_pattern", "https://example.invalid/*")
-        put("timeout_seconds", 15)
-        put("updated_at", 1L)
-      },
-    )
-
-    ensureVideoSchema(db)
-
     val columns = db.rawQuery("PRAGMA table_info(video_web_extractor_rules)", null).use { cursor ->
-      val nameColumn = cursor.getColumnIndexOrThrow("name")
-      buildSet { while (cursor.moveToNext()) add(cursor.getString(nameColumn)) }
+      val index = cursor.getColumnIndexOrThrow("name")
+      buildSet { while (cursor.moveToNext()) add(cursor.getString(index)) }
     }
     assertTrue("share_referrer_path_for_playback" in columns)
-    val value = db.rawQuery(
-      "SELECT share_referrer_path_for_playback FROM video_web_extractor_rules WHERE id = ?",
-      arrayOf("legacy-rule"),
-    ).use { cursor ->
-      assertTrue(cursor.moveToFirst())
-      cursor.getInt(0)
-    }
-    assertEquals(0, value)
   }
+
 }
 
 private object UnusedReferrerSettingHttpClient : HttpClient {

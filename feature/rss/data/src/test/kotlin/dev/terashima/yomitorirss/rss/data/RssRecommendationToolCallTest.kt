@@ -13,6 +13,30 @@ import org.junit.Test
 
 class RssRecommendationToolCallTest {
   @Test
+  fun `学習promptは大量の参考があっても入力上限内に収まる`() {
+    val examples = (1..100).map { index ->
+      RssRecommendationFeedback(
+        id = "feedback-$index",
+        articleId = "article-$index",
+        title = "長い記事タイトル".repeat(200),
+        previousAssessment = null,
+        createdAt = index.toLong(),
+      )
+    }
+    val prompt = buildLearningPrompt(
+      manualCondition = "除外条件".repeat(1000),
+      learnedCondition = "学習済み条件".repeat(1000),
+      learnedPriorityCondition = "優先条件".repeat(1000),
+      feedback = examples,
+      examples = examples,
+    )
+
+    assertTrue(prompt.length < 15_000)
+    assertTrue(prompt.contains("outcome=already_covered"))
+    assertTrue(!prompt.contains("feedback-1"))
+  }
+
+  @Test
   fun `スコアリングpromptは条件とタイトルだけを含む`() {
     val prompt = buildScoringPrompt(
       condition = "広告記事を低くする",

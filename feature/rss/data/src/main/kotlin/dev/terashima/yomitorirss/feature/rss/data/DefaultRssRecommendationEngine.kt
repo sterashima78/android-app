@@ -182,25 +182,25 @@ internal fun buildLearningPrompt(
   examples: List<RssRecommendationFeedback> = emptyList(),
 ): String = buildString {
   appendLine("手動条件:")
-  appendLine(manualCondition.trim().ifBlank { "なし" }.take(MAX_CONDITION_PROMPT_CHARS))
+  appendLine(manualCondition.trim().ifBlank { "なし" }.take(MAX_LEARNING_CONDITION_CHARS))
   appendLine()
   appendLine("現在の学習済み除外条件:")
-  appendLine(learnedCondition.trim().ifBlank { "なし" }.take(MAX_CONDITION_PROMPT_CHARS))
+  appendLine(learnedCondition.trim().ifBlank { "なし" }.take(MAX_LEARNING_CONDITION_CHARS))
   appendLine()
   appendLine("現在の学習済み優先条件:")
-  appendLine(learnedPriorityCondition.trim().ifBlank { "なし" }.take(MAX_CONDITION_PROMPT_CHARS))
+  appendLine(learnedPriorityCondition.trim().ifBlank { "なし" }.take(MAX_LEARNING_CONDITION_CHARS))
   appendLine()
   appendLine("今回の参考記事（優先/除外ラベルと直前評価）:")
   feedback.take(MAX_LEARNING_FEEDBACK).forEachIndexed { index, item ->
     append(index + 1).append(". ").append(feedbackKindLabel(item.kind))
-    append(": ").append(normalizeTitle(item.title))
+    append(": ").append(normalizeTitle(item.title).take(MAX_LEARNING_TITLE_CHARS))
     append(" / 前回評価: ").appendLine(previousAssessmentLabel(item.previousAssessment))
   }
   appendLine()
   appendLine("過去の参考記事（両方の条件を検証するための代表例）:")
-  examples.take(MAX_LEARNING_EXAMPLES).forEachIndexed { index, item ->
+  examples.takeLast(MAX_LEARNING_EXAMPLES).forEachIndexed { index, item ->
     append(index + 1).append(". ").append(feedbackKindLabel(item.kind))
-    append(": ").appendLine(normalizeTitle(item.title))
+    append(": ").appendLine(normalizeTitle(item.title).take(MAX_LEARNING_TITLE_CHARS))
   }
   appendLine()
   appendLine("手動の除外条件は変更しないでください。学習済み優先条件と除外条件は必ず同時に検討し、両方の条件を返してください。")
@@ -309,6 +309,8 @@ private const val RSS_RECOMMENDATION_MAX_ATTEMPTS = 2
 private const val RSS_RECOMMENDATION_MAX_BATCH_SIZE = 12
 private const val MAX_TITLE_CHARS = 500
 private const val MAX_CONDITION_PROMPT_CHARS = 8_000
-private const val MAX_LEARNING_FEEDBACK = 50
-private const val MAX_LEARNING_EXAMPLES = 50
+private const val MAX_LEARNING_FEEDBACK = 24
+private const val MAX_LEARNING_CONDITION_CHARS = 1_500
+private const val MAX_LEARNING_TITLE_CHARS = 180
+private const val MAX_LEARNING_EXAMPLES = 12
 private val RSS_RECOMMENDATION_JSON = Json { isLenient = false }

@@ -28,7 +28,7 @@ class RssRecommendationRepositoryTest {
   fun setUp() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     helper = object : SQLiteOpenHelper(context, null, null, 1) {
-      override fun onCreate(db: SQLiteDatabase) = Unit
+      override fun onCreate(db: SQLiteDatabase) = ensureRssRecommendationSchema(db)
       override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
     }
     repository = DefaultRssRecommendationRepository(DatabaseConnection(helper))
@@ -108,10 +108,11 @@ class RssRecommendationRepositoryTest {
 
     assertEquals(previous, repository.listPendingFeedback().single().previousAssessment)
 
-    val updated = repository.applyLearnedConditionAndConsumeFeedback(
+    val updated = requireNotNull(repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = setOf(feedback.id),
       learnedCondition = "広告的な告知を低くする",
-    )
+      expectedRevision = repository.loadPolicy().revision,
+    ))
 
     assertEquals(1L, updated.revision)
     assertEquals("広告的な告知を低くする", updated.learnedCondition)
@@ -127,11 +128,12 @@ class RssRecommendationRepositoryTest {
       kind = RssRecommendationFeedbackKind.PRIORITY,
     )
 
-    val updated = repository.applyLearnedConditionAndConsumeFeedback(
+    val updated = requireNotNull(repository.applyLearnedConditionAndConsumeFeedback(
       feedbackIds = setOf(reference.id),
       learnedCondition = "販促だけを除外",
       learnedPriorityCondition = "技術的な内容を優先",
-    )
+      expectedRevision = repository.loadPolicy().revision,
+    ))
 
     assertEquals("販促だけを除外", updated.learnedCondition)
     assertEquals("技術的な内容を優先", updated.learnedPriorityCondition)
@@ -144,11 +146,11 @@ class RssRecommendationRepositoryTest {
   fun `学習条件をリセットしたら同種の学習済み参考も削除する`() {
     val excluded = repository.addFeedback("exclude", "除外記事", null)
     repository.applyLearnedConditionAndConsumeFeedback(
-      setOf(excluded.id), "宣伝を除外", "",
+      setOf(excluded.id), "宣伝を除外", "", repository.loadPolicy().revision,
     )
     val priority = repository.addFeedback("priority", "優先記事", null, RssRecommendationFeedbackKind.PRIORITY)
     repository.applyLearnedConditionAndConsumeFeedback(
-      setOf(priority.id), "宣伝を除外", "技術記事を優先",
+      setOf(priority.id), "宣伝を除外", "技術記事を優先", repository.loadPolicy().revision,
     )
     assertEquals(2, repository.listLearningExamples().size)
 
@@ -163,50 +165,34 @@ class RssRecommendationRepositoryTest {
   }
 
   @Test
-  fun `旧データの除外参考と条件を維持し古いスコアを無効化する`() {
-    val db = helper.writableDatabase
-    db.execSQL(
-      """
-        CREATE TABLE rss_recommendation_policy(
-          id INTEGER PRIMARY KEY NOT NULL CHECK(id=1),
-          manual_condition TEXT NOT NULL DEFAULT '',
-          learned_condition TEXT NOT NULL DEFAULT '',
-          execution_provider TEXT NOT NULL DEFAULT 'LOCAL',
-          revision INTEGER NOT NULL DEFAULT 0
-        )
-      """.trimIndent(),
-    )
-    db.execSQL(
-      "INSERT INTO rss_recommendation_policy(id, manual_condition, learned_condition, revision) " +
-        "VALUES (1, '手動の除外条件', '古い学習条件', 4)",
-    )
-    db.execSQL(
-      """
-        CREATE TABLE rss_recommendation_feedback(
-          id TEXT PRIMARY KEY NOT NULL,
-          article_id TEXT NOT NULL UNIQUE,
-          title TEXT NOT NULL,
-          previous_status TEXT,
-          previous_score INTEGER,
-          previous_unscored_reason TEXT,
-          previous_revision INTEGER,
-          previous_assessed_at INTEGER,
-          created_at INTEGER NOT NULL
-        )
-      """.trimIndent(),
-    )
-    db.execSQL(
-      "INSERT INTO rss_recommendation_feedback(id, article_id, title, created_at) " +
-        "VALUES ('old-feedback', 'a1', '古い除外参考', 1)",
-    )
+  fun `学習結果のrevisionが変わった場合は適用しない`() {
+    val reference = repository.addFeedback("article", "記事", null)
+    val oldRevision = repository.loadPolicy().revision
+    repository.saveManualCondition("new")
 
+    assertNull(repository.applyLearnedConditionAndConsumeFeedback(
+      feedbackIds = setOf(reference.id),
+      learnedCondition = "stale",
+      expectedRevision = oldRevision,
+    ))
+    assertEquals(listOf(reference), repository.listPendingFeedback())
+  }
+
+  @Test
+  fun `条件が空でも学習済み参考をリセットすると履歴は削除される`() {
+    val item = repository.addFeedback("one", "記事", null)
     val policy = repository.loadPolicy()
+    val result = repository.applyLearnedConditionAndConsumeFeedback(
+      feedbackIds = setOf(item.id),
+      learnedCondition = "",
+      expectedRevision = policy.revision,
+    )
+    assertEquals(policy, result)
+    assertEquals(1, repository.listLearningExamples().size)
 
-    assertEquals(5L, policy.revision)
-    assertEquals("手動の除外条件", policy.manualCondition)
-    assertEquals("古い学習条件", policy.learnedCondition)
-    assertEquals("", policy.learnedPriorityCondition)
-    assertEquals(RssRecommendationFeedbackKind.EXCLUSION, repository.listPendingFeedback().single().kind)
+    repository.resetLearnedCondition()
+
+    assertEquals(0, repository.listLearningExamples().size)
   }
 
   @Test
