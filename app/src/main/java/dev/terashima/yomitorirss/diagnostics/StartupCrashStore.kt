@@ -4,6 +4,7 @@ import android.app.ActivityManager
 import android.app.Application
 import android.app.ApplicationExitInfo
 import android.content.Context
+import android.os.Build
 import dev.terashima.yomitorirss.BuildConfig
 import dev.terashima.yomitorirss.core.airuntime.LocalAiMemoryDiagnostics
 import dev.terashima.yomitorirss.core.airuntime.LocalAiTextProcessDiagnostics
