@@ -1,12 +1,26 @@
 package dev.terashima.yomitorirss.feature.rss
 
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+
+enum class FeedRefreshOrigin(val diagnosticCode: String) {
+  SCREEN_OPEN("screen_open"),
+  MANUAL("manual"),
+  BACKGROUND("background"),
+  IMPORT("import"),
+}
+
+class FeedRefreshContext(val origin: FeedRefreshOrigin) : AbstractCoroutineContextElement(Key) {
+  companion object Key : CoroutineContext.Key<FeedRefreshContext>
+}
 
 /** Automatic requests respect both intervals; user-initiated refreshes bypass both. */
 data class FeedRefreshIntervals(
@@ -30,8 +44,13 @@ class RefreshFeedsUseCase(
 ) {
   suspend operator fun invoke(
     feeds: List<Feed>,
+    origin: FeedRefreshOrigin = FeedRefreshOrigin.MANUAL,
     onProgress: (completed: Int, total: Int) -> Unit = { _, _ -> },
-    mode: FeedRefreshMode = FeedRefreshMode.FORCE,
+    mode: FeedRefreshMode = when (origin) {
+      FeedRefreshOrigin.SCREEN_OPEN -> FeedRefreshMode.AUTOMATIC
+      FeedRefreshOrigin.BACKGROUND -> FeedRefreshMode.SCHEDULED
+      else -> FeedRefreshMode.FORCE
+    },
   ): RefreshFeedsResult {
     val failures = AtomicInteger()
     val skipped = AtomicInteger()
@@ -39,8 +58,14 @@ class RefreshFeedsUseCase(
     val permits = Semaphore(maxConcurrency)
     val policy = intervals()
 
-    coroutineScope {
-      feeds.map { feed ->
+    val effectiveOrigin = when (mode) {
+      FeedRefreshMode.AUTOMATIC -> FeedRefreshOrigin.SCREEN_OPEN
+      FeedRefreshMode.SCHEDULED -> FeedRefreshOrigin.BACKGROUND
+      FeedRefreshMode.FORCE -> origin
+    }
+    withContext(FeedRefreshContext(effectiveOrigin)) {
+      coroutineScope {
+        feeds.map { feed ->
         async {
           permits.withPermit {
             try {
@@ -69,7 +94,8 @@ class RefreshFeedsUseCase(
             onProgress(completed.incrementAndGet(), feeds.size)
           }
         }
-      }.awaitAll()
+        }.awaitAll()
+      }
     }
 
     return RefreshFeedsResult(total = feeds.size, failures = failures.get(), skipped = skipped.get())
