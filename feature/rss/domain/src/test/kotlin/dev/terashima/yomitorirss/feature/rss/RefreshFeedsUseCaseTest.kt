@@ -54,6 +54,51 @@ class RefreshFeedsUseCaseTest {
     )
   }
 
+
+  @Test
+  fun `自動更新は設定された間隔を渡して取得不要のフィードを飛ばす`() = runBlocking {
+    val repository = RecordingFeedRepository(skipFeedIds = setOf("1"))
+    val progress = mutableListOf<Pair<Int, Int>>()
+    val useCase = RefreshFeedsUseCase(
+      repository,
+      maxConcurrency = 1,
+      intervals = { FeedRefreshIntervals(automaticMinutes = 60L, failureRetryMinutes = 15L) },
+    )
+    val result = useCase(
+      listOf(feed("1"), feed("2")),
+      onProgress = { completed, total -> progress += completed to total },
+      mode = FeedRefreshMode.AUTOMATIC,
+    )
+
+    assertEquals(RefreshFeedsResult(total = 2, failures = 0, skipped = 1), result)
+    assertEquals(listOf("2"), repository.refreshedFeedIds)
+    assertEquals(listOf(3_600_000L to 900_000L, 3_600_000L to 900_000L), repository.policies)
+    assertEquals(listOf(1 to 2, 2 to 2), progress)
+  }
+
+  @Test
+  fun `手動更新は取得間隔を無視する`() = runBlocking {
+    val repository = RecordingFeedRepository(skipFeedIds = setOf("1"))
+    val useCase = RefreshFeedsUseCase(repository)
+    val result = useCase(listOf(feed("1")), mode = FeedRefreshMode.FORCE)
+    assertEquals(RefreshFeedsResult(total = 1, failures = 0), result)
+    assertEquals(listOf("1"), repository.refreshedFeedIds)
+    assertTrue(repository.policies.isEmpty())
+  }
+
+  @Test
+  fun `キャンセルは個別フィードの失敗へ変換しない`() = runBlocking {
+    val repository = RecordingFeedRepository(cancelFeedIds = setOf("1"))
+    val useCase = RefreshFeedsUseCase(repository)
+    var cancelled = false
+    try {
+      useCase(listOf(feed("1")))
+    } catch (_: kotlinx.coroutines.CancellationException) {
+      cancelled = true
+    }
+    assertTrue(cancelled)
+  }
+
   private fun feed(id: String) = Feed(
     id = id,
     title = "feed-$id",
@@ -70,9 +115,24 @@ class RefreshFeedsUseCaseTest {
 private class RecordingFeedRepository(
   private val failingFeedIds: Set<String> = emptySet(),
   private val delayMillis: Long = 0,
+  private val skipFeedIds: Set<String> = emptySet(),
+  private val cancelFeedIds: Set<String> = emptySet(),
 ) : FeedRepository {
   override val changes: StateFlow<Long> = MutableStateFlow(0)
   val refreshedFeedIds = mutableListOf<String>()
+  val policies = mutableListOf<Pair<Long, Long>>()
+
+  override suspend fun refreshFeedIfDue(
+    feed: Feed,
+    minimumAgeMillis: Long,
+    failureRetryMillis: Long,
+  ): Boolean {
+    policies += minimumAgeMillis to failureRetryMillis
+    if (feed.id in skipFeedIds) return false
+    refreshFeed(feed)
+    return true
+  }
+
   val origins = Collections.synchronizedList(mutableListOf<FeedRefreshOrigin?>())
 
   private val activeRefreshes = AtomicInteger()
@@ -81,6 +141,7 @@ private class RecordingFeedRepository(
 
   override suspend fun refreshFeed(feed: Feed) {
     origins += coroutineContext[FeedRefreshContext]?.origin
+    if (feed.id in cancelFeedIds) throw kotlinx.coroutines.CancellationException("cancelled")
     val active = activeRefreshes.incrementAndGet()
     peakRefreshes.updateAndGet { current -> maxOf(current, active) }
     try {
