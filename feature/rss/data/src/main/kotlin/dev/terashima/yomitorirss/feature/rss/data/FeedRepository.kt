@@ -19,7 +19,9 @@ import dev.terashima.yomitorirss.feature.rss.data.network.WebScrapingFeedClient
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
@@ -37,6 +39,8 @@ class DefaultFeedRepository(
   private val lastAttempts = ConcurrentHashMap<String, RefreshAttempt>()
   // Failed attempts are transient: a process restart permits an immediate retry.
   private val lastFailureMillis = ConcurrentHashMap<String, Long>()
+  private val _refreshingFeedIds = MutableStateFlow<Set<String>>(emptySet())
+  override val refreshingFeedIds: StateFlow<Set<String>> = _refreshingFeedIds
   private val webScrapingRules = RssWebScrapingRuleStore(database)
   private val client = FeedClient(httpClient)
   private val webScrapingClient = applicationContext?.let { WebScrapingFeedClient(it.applicationContext) }
@@ -153,6 +157,7 @@ class DefaultFeedRepository(
         return@withLock false
       }
 
+      _refreshingFeedIds.update { it + feed.id }
       try {
         val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), current.feedUrl)
         val result = if (customRule != null) {
@@ -178,6 +183,8 @@ class DefaultFeedRepository(
         lastAttempts[feed.id] = RefreshAttempt(error)
         dataChanges.notifyChanged()
         throw error
+      } finally {
+        _refreshingFeedIds.update { it - feed.id }
       }
     }
   }
