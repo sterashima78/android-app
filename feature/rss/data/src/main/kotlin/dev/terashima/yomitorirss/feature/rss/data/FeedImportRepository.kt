@@ -50,6 +50,7 @@ class DefaultFeedImportRepository(
             etag = null,
             modified = null,
             folderId = folderId,
+            fetched = false,
           )
         }.onSuccess {
           added += 1
