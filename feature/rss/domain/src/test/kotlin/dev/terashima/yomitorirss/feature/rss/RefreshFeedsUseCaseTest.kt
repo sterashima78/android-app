@@ -83,7 +83,18 @@ class RefreshFeedsUseCaseTest {
     val result = useCase(listOf(feed("1")), mode = FeedRefreshMode.FORCE)
     assertEquals(RefreshFeedsResult(total = 1, failures = 0), result)
     assertEquals(listOf("1"), repository.refreshedFeedIds)
-    assertTrue(repository.policies.isEmpty())
+    assertEquals(listOf(0L to 0L), repository.policies)
+  }
+
+  @Test
+  fun `バックグラウンド更新間隔は画面更新間隔とは独立`() = runBlocking {
+    val repository = RecordingFeedRepository()
+    val useCase = RefreshFeedsUseCase(
+      repository,
+      intervals = { FeedRefreshIntervals(automaticMinutes = 60L, failureRetryMinutes = 5L, scheduledMinutes = 15L) },
+    )
+    useCase(listOf(feed("1")), mode = FeedRefreshMode.SCHEDULED)
+    assertEquals(listOf(900_000L to 300_000L), repository.policies)
   }
 
   @Test
@@ -128,7 +139,7 @@ private class RecordingFeedRepository(
     failureRetryMillis: Long,
   ): Boolean {
     policies += minimumAgeMillis to failureRetryMillis
-    if (feed.id in skipFeedIds) return false
+    if (feed.id in skipFeedIds && minimumAgeMillis > 0L) return false
     refreshFeed(feed)
     return true
   }
