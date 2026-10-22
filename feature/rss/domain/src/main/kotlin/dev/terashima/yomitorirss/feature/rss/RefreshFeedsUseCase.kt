@@ -29,7 +29,7 @@ data class FeedRefreshIntervals(
   val scheduledMinutes: Long = 60L,
 )
 
-enum class FeedRefreshMode { AUTOMATIC, SCHEDULED, FORCE }
+enum class FeedRefreshMode { AUTOMATIC, SCHEDULED, FORCE, IMPORT }
 
 data class RefreshFeedsResult(
   val total: Int,
@@ -62,6 +62,7 @@ class RefreshFeedsUseCase(
       FeedRefreshMode.AUTOMATIC -> FeedRefreshOrigin.SCREEN_OPEN
       FeedRefreshMode.SCHEDULED -> FeedRefreshOrigin.BACKGROUND
       FeedRefreshMode.FORCE -> origin
+      FeedRefreshMode.IMPORT -> FeedRefreshOrigin.IMPORT
     }
     withContext(FeedRefreshContext(effectiveOrigin)) {
       coroutineScope {
@@ -79,7 +80,7 @@ class RefreshFeedsUseCase(
                   }) * 60_000L,
                   failureRetryMillis = policy.failureRetryMinutes * 60_000L,
                 )
-                FeedRefreshMode.FORCE -> repository.refreshFeedIfDue(
+                FeedRefreshMode.FORCE, FeedRefreshMode.IMPORT -> repository.refreshFeedIfDue(
                   feed,
                   minimumAgeMillis = 0L,
                   failureRetryMillis = 0L,
