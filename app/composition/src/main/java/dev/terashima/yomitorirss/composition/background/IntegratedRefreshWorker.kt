@@ -18,6 +18,7 @@ import dev.terashima.yomitorirss.AppContainer
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.feature.mail.Mailbox
+import dev.terashima.yomitorirss.feature.rss.FeedRefreshMode
 import dev.terashima.yomitorirss.feature.rss.FeedRefreshOrigin
 import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import java.util.concurrent.TimeUnit
