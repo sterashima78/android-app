@@ -28,6 +28,20 @@ class TrafficTelemetryTest {
   }
 
   @Test
+  fun `本文のない取得試行もフィード別に計上する`() {
+    val prior = TrafficTelemetry.recorder
+    var observed: TrafficTransfer? = null
+    try {
+      TrafficTelemetry.recorder = { observed = it }
+      val resource = TrafficResource("feed-1", "background")
+      TrafficTelemetry.record("rss", 0, 0, resource, 304)
+      assertEquals(TrafficTransfer("rss", 0, 0, resource, 304), observed)
+    } finally {
+      TrafficTelemetry.recorder = prior
+    }
+  }
+
+  @Test
   fun `機能属性が子コルーチンへ伝播する`() = runBlocking {
     assertNull(coroutineContext[TrafficAttribution])
     withContext(TrafficAttribution("wiki")) {
