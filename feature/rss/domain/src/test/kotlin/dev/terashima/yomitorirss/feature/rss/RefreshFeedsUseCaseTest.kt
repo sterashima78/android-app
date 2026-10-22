@@ -2,6 +2,8 @@ package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.ContentType
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.Collections
+import kotlin.coroutines.coroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,6 +40,20 @@ class RefreshFeedsUseCaseTest {
     assertEquals(2, repository.maxObservedConcurrency)
   }
 
+  @Test
+  fun `バックグラウンド起点は並列取得の各処理へ伝播する`() = runBlocking {
+    val repository = RecordingFeedRepository()
+    RefreshFeedsUseCase(repository, maxConcurrency = 2)(
+      feeds = listOf(feed("1"), feed("2"), feed("3")),
+      origin = FeedRefreshOrigin.BACKGROUND,
+    )
+
+    assertEquals(
+      listOf(FeedRefreshOrigin.BACKGROUND, FeedRefreshOrigin.BACKGROUND, FeedRefreshOrigin.BACKGROUND),
+      repository.origins.toList(),
+    )
+  }
+
   private fun feed(id: String) = Feed(
     id = id,
     title = "feed-$id",
@@ -57,12 +73,14 @@ private class RecordingFeedRepository(
 ) : FeedRepository {
   override val changes: StateFlow<Long> = MutableStateFlow(0)
   val refreshedFeedIds = mutableListOf<String>()
+  val origins = Collections.synchronizedList(mutableListOf<FeedRefreshOrigin?>())
 
   private val activeRefreshes = AtomicInteger()
   private val peakRefreshes = AtomicInteger()
   val maxObservedConcurrency: Int get() = peakRefreshes.get()
 
   override suspend fun refreshFeed(feed: Feed) {
+    origins += coroutineContext[FeedRefreshContext]?.origin
     val active = activeRefreshes.incrementAndGet()
     peakRefreshes.updateAndGet { current -> maxOf(current, active) }
     try {
