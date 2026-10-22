@@ -100,6 +100,27 @@ internal fun TrafficUsageDialog(reader: TrafficUsageReader, onDismiss: () -> Uni
                   Text(formatBytes(bytes))
                 }
               }
+            val topFeeds = result.topRssFeeds(transport)
+            if (topFeeds.isNotEmpty()) {
+              Text("RSSフィード別（受信量上位10件）")
+              topFeeds.forEach { feed ->
+                Row(
+                  modifier = Modifier.fillMaxWidth(),
+                  horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                  Text(feed.feedTitle ?: "削除済みフィード", modifier = Modifier.weight(1f))
+                  Text(formatBytes(feed.receivedBytes))
+                }
+                Text("取得 ${feed.requests}回 / HTTP 304: ${feed.notModified}回（${feed.notModifiedPercent}%）")
+                Text(
+                  "取得契機: " + feed.origins.entries.sortedByDescending { it.value }
+                    .joinToString(" / ") { (origin, count) ->
+                      "${rssRefreshOriginLabel(origin)} ${count}回"
+                    },
+                )
+              }
+              Text("フィード別の数値は通常RSS/Atom取得の受信本文のみです。WebViewスクレイピングは対象外です。")
+            }
             Text("日別の記録")
             visible.groupBy(TrafficUsageRecord::date)
               .mapValues { (_, rows) -> rows.sumOf(TrafficUsageRecord::totalBytes) }
@@ -139,5 +160,13 @@ private fun featureLabel(feature: String): String = when (feature) {
   "video" -> "動画"
   "library" -> "ライブラリ"
   "model" -> "モデル取得"
+  else -> "その他"
+}
+
+private fun rssRefreshOriginLabel(origin: String): String = when (origin) {
+  "screen_open" -> "画面表示"
+  "manual" -> "手動"
+  "background" -> "定期"
+  "import" -> "インポート"
   else -> "その他"
 }

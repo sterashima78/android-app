@@ -38,7 +38,12 @@ class AppContainer(
   private val appVersionName: String,
   private val resumedActivityProvider: () -> Activity? = { null },
 ) {
-  private val trafficUsageRepository = AndroidTrafficUsageRepository(application)
+  private val trafficUsageRepository = AndroidTrafficUsageRepository(application) {
+    // Resolve titles from the RSS owner only when displaying diagnostics; never persist them in counters.
+    kotlinx.coroutines.runBlocking {
+      feedRepository.listFeeds().associate { it.id to it.title }
+    }
+  }
   internal val trafficUsageReader: TrafficUsageReader = trafficUsageRepository
 
   init {
