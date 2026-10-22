@@ -1,9 +1,11 @@
 package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.ContentType
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 interface FeedRepository {
+  val refreshingFeedIds: StateFlow<Set<String>> get() = MutableStateFlow(emptySet())
   val changes: StateFlow<Long>
   suspend fun listFeeds(): List<Feed>
   suspend fun listFolders(): List<FeedFolder>
