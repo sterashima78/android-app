@@ -35,6 +35,7 @@ internal class FeedStore(
     markExistingArticlesRead: Boolean = false,
     folderId: String? = null,
     contentTypeOverride: ContentType? = null,
+    fetched: Boolean = true,
   ): Feed {
     val now = nowIso()
     val feed = Feed(
@@ -44,7 +45,7 @@ internal class FeedStore(
       siteUrl = parsed.siteUrl,
       etag = etag,
       lastModified = modified,
-      lastFetchedAt = now,
+      lastFetchedAt = now.takeIf { fetched },
       lastError = null,
       createdAt = now,
       folderId = folderId,
