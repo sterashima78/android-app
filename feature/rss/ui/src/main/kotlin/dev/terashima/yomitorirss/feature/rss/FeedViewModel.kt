@@ -80,6 +80,7 @@ class FeedViewModel(
     if (_state.value.refreshing) return
     try {
       val feeds = repository.listFeeds().filter(feedSelector)
+        .filter { mode != FeedRefreshMode.IMPORT || it.lastFetchedAt == null }
       _state.update {
         it.copy(refreshing = true, refreshStatus = if (feeds.isEmpty()) null else "0 / ${feeds.size}")
       }
@@ -321,7 +322,7 @@ class FeedViewModel(
       runCatching { imports.importFeedOpml(documentUri) }
         .onSuccess { result ->
           if (result.added > 0) {
-            refreshInternal(showCompletionMessage = false, origin = FeedRefreshOrigin.IMPORT)
+            refreshInternal(showCompletionMessage = false, mode = FeedRefreshMode.IMPORT)
           }
           _state.update {
             it.copy(
