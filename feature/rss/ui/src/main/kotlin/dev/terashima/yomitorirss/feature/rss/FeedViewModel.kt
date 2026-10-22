@@ -57,8 +57,11 @@ class FeedViewModel(
     }
   }
 
-  fun refresh(showCompletionMessage: Boolean = true) {
-    viewModelScope.launch(Dispatchers.IO) { refreshInternal(showCompletionMessage) }
+  fun refresh(
+    showCompletionMessage: Boolean = true,
+    mode: FeedRefreshMode = FeedRefreshMode.FORCE,
+  ) {
+    viewModelScope.launch(Dispatchers.IO) { refreshInternal(showCompletionMessage, mode) }
   }
 
   private suspend fun refreshInternal(
