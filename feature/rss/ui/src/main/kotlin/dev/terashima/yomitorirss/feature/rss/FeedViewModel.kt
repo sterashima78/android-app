@@ -50,6 +50,15 @@ class FeedViewModel(
       repository.changes.collect { reload() }
     }
     viewModelScope.launch(Dispatchers.IO) {
+      repository.refreshingFeedIds.collect { activeIds ->
+        _state.update { current ->
+          current.copy(
+            refreshing = current.refreshStatus != null || current.feeds.any { it.id in activeIds },
+          )
+        }
+      }
+    }
+    viewModelScope.launch(Dispatchers.IO) {
       reload()
       if (_state.value.feeds.isNotEmpty()) {
         refreshInternal(showCompletionMessage = false, mode = FeedRefreshMode.AUTOMATIC)
