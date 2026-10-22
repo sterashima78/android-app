@@ -64,7 +64,7 @@ fun RssRoute(
     PullToRefreshContainer(
       modifier = modifier,
       isRefreshing = feedState.refreshing,
-      onRefresh = feedViewModel::refresh,
+      onRefresh = { feedViewModel.refresh() },
     ) {
       RssScreen(
         modifier = Modifier.fillMaxSize(),
@@ -148,7 +148,7 @@ fun FeedRoute(
     PullToRefreshContainer(
       modifier = modifier,
       isRefreshing = state.refreshing,
-      onRefresh = feedViewModel::refresh,
+      onRefresh = { feedViewModel.refresh() },
     ) {
       FeedScreen(
         modifier = Modifier.fillMaxSize(),
