@@ -42,13 +42,13 @@ class RefreshFeedsUseCase(
     withContext(FeedRefreshContext(origin)) {
       coroutineScope {
         feeds.map { feed ->
-        async {
-          permits.withPermit {
-            runCatching { repository.refreshFeed(feed) }
-              .onFailure { failures.incrementAndGet() }
-            onProgress(completed.incrementAndGet(), feeds.size)
+          async {
+            permits.withPermit {
+              runCatching { repository.refreshFeed(feed) }
+                .onFailure { failures.incrementAndGet() }
+              onProgress(completed.incrementAndGet(), feeds.size)
+            }
           }
-        }
         }.awaitAll()
       }
     }
