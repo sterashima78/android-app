@@ -163,7 +163,15 @@ class DefaultFeedRepository(
         val result = if (customRule != null) {
           requireWebScrapingClient().fetchFeed(current.feedUrl, customRule)
         } else {
-          client.fetchFeed(current.feedUrl, current.etag, current.lastModified)
+          client.fetchFeed(
+            current.feedUrl,
+            current.etag,
+            current.lastModified,
+            trafficResource = TrafficResource(
+              current.id,
+              coroutineContext[FeedRefreshContext]?.origin?.diagnosticCode ?: "other",
+            ),
+          )
         }
         if (result.notModified) {
           store.updateFeedNotModified(current.id)
