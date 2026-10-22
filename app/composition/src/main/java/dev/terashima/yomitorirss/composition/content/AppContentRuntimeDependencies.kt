@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.composition.content
 
 import android.app.Application
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
+import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
@@ -182,7 +183,11 @@ internal class AppContentRuntimeDependencies(
   }
 
   val refreshFeedsUseCase: RefreshFeedsUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    RefreshFeedsUseCase(feedRepository, intervals = rssRefreshPreferences::intervals)
+    RefreshFeedsUseCase(feedRepository, intervals = {
+      rssRefreshPreferences.intervals().copy(
+        scheduledMinutes = BackgroundDataFetchPreferences(application).integratedRefreshIntervalMinutes,
+      )
+    })
   }
 
   val saveSharedBookmarkUseCase: SaveSharedBookmarkUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
