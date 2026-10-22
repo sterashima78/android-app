@@ -48,7 +48,7 @@ internal class IntegratedRefreshWorker(
     runIsolatedRefresh {
       val feeds = container.feedRepository.listFeeds()
         .filter { RedditSourceBoundary.isNonRedditFeed(it.feedUrl) }
-      container.refreshFeedsUseCase(feeds, onProgress = { _, _ -> }, mode = FeedRefreshMode.AUTOMATIC)
+      container.refreshFeedsUseCase(feeds, onProgress = { _, _ -> }, mode = FeedRefreshMode.SCHEDULED)
     }
     runIsolatedRefresh { container.redditRepository.refreshAll { _, _ -> } }
     runIsolatedRefresh { container.videoProviderRepository.refreshProviders() }
