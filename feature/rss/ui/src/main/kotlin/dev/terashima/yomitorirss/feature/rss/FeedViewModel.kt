@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.ContentType
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,54 +45,72 @@ class FeedViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(FeedUiState())
   val state: StateFlow<FeedUiState> = _state.asStateFlow()
+  private val localRefreshRunning = AtomicBoolean(false)
 
   init {
     viewModelScope.launch(Dispatchers.IO) {
       repository.changes.collect { reload() }
     }
     viewModelScope.launch(Dispatchers.IO) {
+      repository.refreshingFeedIds.collect { activeIds ->
+        _state.update { current ->
+          current.copy(
+            refreshing = current.refreshStatus != null || current.feeds.any { it.id in activeIds },
+          )
+        }
+      }
+    }
+    viewModelScope.launch(Dispatchers.IO) {
       reload()
       if (_state.value.feeds.isNotEmpty()) {
-        refreshInternal(showCompletionMessage = false, origin = FeedRefreshOrigin.SCREEN_OPEN)
+        refreshInternal(showCompletionMessage = false, mode = FeedRefreshMode.AUTOMATIC)
       }
     }
   }
 
-  fun refresh(showCompletionMessage: Boolean = true) {
-    viewModelScope.launch(Dispatchers.IO) { refreshInternal(showCompletionMessage) }
+  fun refresh(
+    showCompletionMessage: Boolean = true,
+    mode: FeedRefreshMode = FeedRefreshMode.FORCE,
+  ) {
+    viewModelScope.launch(Dispatchers.IO) { refreshInternal(showCompletionMessage, mode) }
   }
 
   private suspend fun refreshInternal(
     showCompletionMessage: Boolean,
-    origin: FeedRefreshOrigin = FeedRefreshOrigin.MANUAL,
+    mode: FeedRefreshMode = FeedRefreshMode.FORCE,
   ) {
-    if (_state.value.refreshing) return
-    runCatching {
+    if (!localRefreshRunning.compareAndSet(false, true)) return
+    try {
       val feeds = repository.listFeeds().filter(feedSelector)
+        .filter { mode != FeedRefreshMode.IMPORT || it.lastFetchedAt == null }
       _state.update {
-        it.copy(
-          refreshing = true,
-          refreshStatus = if (feeds.isEmpty()) null else "0 / ${feeds.size}",
-        )
+        it.copy(refreshing = true, refreshStatus = if (feeds.isEmpty()) null else "0 / ${feeds.size}")
       }
-      val result = refreshFeeds(feeds, origin) { completed, total ->
-        _state.update { it.copy(refreshStatus = "$completed / $total") }
-      }
+      val result = refreshFeeds(
+        feeds = feeds,
+        onProgress = { completed, total ->
+          _state.update { it.copy(refreshStatus = "$completed / $total") }
+        },
+        mode = mode,
+      )
       reload()
       _state.update {
         it.copy(
-          refreshing = false,
+          refreshing = repository.refreshingFeedIds.value.any { id -> it.feeds.any { feed -> feed.id == id } },
           refreshStatus = null,
           message = when {
             !showCompletionMessage -> it.message
             result.total == 0 -> "登録済みフィードはありません"
+            result.failures == 0 && result.skipped == result.total -> "取得済みのフィードは最新です"
             result.failures == 0 -> "フィードを更新しました"
             result.failures == result.total -> "すべてのフィードの更新に失敗しました"
-            else -> "${result.total - result.failures}件を更新し、${result.failures}件で失敗しました"
+            else -> "${result.total - result.failures - result.skipped}件を更新し、${result.failures}件で失敗しました"
           },
         )
       }
-    }.onFailure { error ->
+    } catch (error: kotlinx.coroutines.CancellationException) {
+      throw error
+    } catch (error: Throwable) {
       _state.update {
         it.copy(
           initialized = true,
@@ -100,6 +119,8 @@ class FeedViewModel(
           message = "フィードを更新できませんでした: ${error.userMessage()}",
         )
       }
+    } finally {
+      localRefreshRunning.set(false)
     }
   }
 
@@ -305,7 +326,7 @@ class FeedViewModel(
       runCatching { imports.importFeedOpml(documentUri) }
         .onSuccess { result ->
           if (result.added > 0) {
-            refreshInternal(showCompletionMessage = false, origin = FeedRefreshOrigin.IMPORT)
+            refreshInternal(showCompletionMessage = false, mode = FeedRefreshMode.IMPORT)
           }
           _state.update {
             it.copy(

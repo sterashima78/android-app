@@ -41,6 +41,16 @@ class AppRouteDependencies(
   val xViewerCssRepository get() = supporting.xViewerCssRepository
   val smbConnectionProfileRepository get() = container.smbConnectionProfileRepository
 
+  fun rssScreenRefreshIntervalMinutes(): Long = container.rssRefreshPreferences.screenRefreshIntervalMinutes
+  fun setRssScreenRefreshIntervalMinutes(minutes: Long) {
+    container.rssRefreshPreferences.screenRefreshIntervalMinutes = minutes
+  }
+
+  fun rssFailureRetryIntervalMinutes(): Long = container.rssRefreshPreferences.failureRetryIntervalMinutes
+  fun setRssFailureRetryIntervalMinutes(minutes: Long) {
+    container.rssRefreshPreferences.failureRetryIntervalMinutes = minutes
+  }
+
   fun backgroundFetchWifiOnly(): Boolean = supporting.backgroundFetchWifiOnly()
 
   fun setBackgroundFetchWifiOnly(wifiOnly: Boolean) {

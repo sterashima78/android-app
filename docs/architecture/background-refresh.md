@@ -46,6 +46,15 @@ WorkManager の periodic work の最短周期が15分であるため、それ未
 既存の「Wi-Fi 接続中のみ取得」は統合 refresh にも適用する。network constraint が満たされない期間は、設定した周期を過ぎても取得を開始しない。
 
 ## Mail migration boundary
+## RSS refresh policy and concurrency
+
+RSS-owned `RefreshFeedsUseCase` reads RSS-owned timing preferences on each batch and invokes the conditional refresh capability for automatic screen and scheduled refreshes. Explicit user refreshes bypass the freshness and retry intervals.
+
+`DefaultFeedRepository` performs the fresh state check while holding a per-feed coroutine mutex. It re-reads the persisted feed after acquiring the lock and coalesces simultaneous refresh attempts, including direct callers such as widgets and other feed consumers. Successful responses (including HTTP 304) update `last_fetched_at` and reset failure suppression. Transient failure timestamps are process-local; a process restart may permit an immediate retry. The in-flight feed ID StateFlow lets independent RSS screen view models display shared refresh activity.
+
+Imported subscriptions without a fetched response retain `last_fetched_at = null` so that first-time synchronization is not mistaken for a recent successful download. The existing RSS table schema and Worker identity remain unchanged.
+
+
 
 メールの初回同期と周期同期は責務を分ける。
 

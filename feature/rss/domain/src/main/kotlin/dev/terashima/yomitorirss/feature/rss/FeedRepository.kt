@@ -1,9 +1,11 @@
 package dev.terashima.yomitorirss.feature.rss
 
 import dev.terashima.yomitorirss.feature.article.ContentType
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 interface FeedRepository {
+  val refreshingFeedIds: StateFlow<Set<String>> get() = MutableStateFlow(emptySet())
   val changes: StateFlow<Long>
   suspend fun listFeeds(): List<Feed>
   suspend fun listFolders(): List<FeedFolder>
@@ -18,6 +20,16 @@ interface FeedRepository {
   suspend fun setFeedContentType(feedId: String, contentType: ContentType?)
   suspend fun setFolderContentType(folderId: String, contentType: ContentType?)
   suspend fun refreshFeed(feed: Feed)
+
+  /**
+   * Atomically checks freshness and refreshes when due. Implementations without a persistent
+   * feed store may delegate to refreshFeed; the RSS data implementation enforces the policy.
+   * Returns false if no fetch is needed or a concurrent request has already completed.
+   */
+  suspend fun refreshFeedIfDue(feed: Feed, minimumAgeMillis: Long, failureRetryMillis: Long): Boolean {
+    refreshFeed(feed)
+    return true
+  }
 
   fun listWebScrapingRules(): List<RssWebScrapingRule> = emptyList()
 
