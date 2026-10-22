@@ -12,9 +12,10 @@ import kotlinx.coroutines.sync.withPermit
 data class FeedRefreshIntervals(
   val automaticMinutes: Long = 30L,
   val failureRetryMinutes: Long = 5L,
+  val scheduledMinutes: Long = 60L,
 )
 
-enum class FeedRefreshMode { AUTOMATIC, FORCE }
+enum class FeedRefreshMode { AUTOMATIC, SCHEDULED, FORCE }
 
 data class RefreshFeedsResult(
   val total: Int,
@@ -43,15 +44,21 @@ class RefreshFeedsUseCase(
         async {
           permits.withPermit {
             try {
-              val fetched = if (mode == FeedRefreshMode.AUTOMATIC) {
-                repository.refreshFeedIfDue(
+              val fetched = when (mode) {
+                FeedRefreshMode.AUTOMATIC, FeedRefreshMode.SCHEDULED -> repository.refreshFeedIfDue(
                   feed,
-                  minimumAgeMillis = policy.automaticMinutes * 60_000L,
+                  minimumAgeMillis = (if (mode == FeedRefreshMode.AUTOMATIC) {
+                    policy.automaticMinutes
+                  } else {
+                    policy.scheduledMinutes
+                  }) * 60_000L,
                   failureRetryMillis = policy.failureRetryMinutes * 60_000L,
                 )
-              } else {
-                repository.refreshFeed(feed)
-                true
+                FeedRefreshMode.FORCE -> repository.refreshFeedIfDue(
+                  feed,
+                  minimumAgeMillis = 0L,
+                  failureRetryMillis = 0L,
+                )
               }
               if (!fetched) skipped.incrementAndGet()
             } catch (error: CancellationException) {
