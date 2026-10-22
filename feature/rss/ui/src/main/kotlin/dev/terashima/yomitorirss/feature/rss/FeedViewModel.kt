@@ -51,7 +51,9 @@ class FeedViewModel(
     }
     viewModelScope.launch(Dispatchers.IO) {
       reload()
-      if (_state.value.feeds.isNotEmpty()) refresh(showCompletionMessage = false)
+      if (_state.value.feeds.isNotEmpty()) {
+        refreshInternal(showCompletionMessage = false, origin = FeedRefreshOrigin.SCREEN_OPEN)
+      }
     }
   }
 
@@ -59,7 +61,10 @@ class FeedViewModel(
     viewModelScope.launch(Dispatchers.IO) { refreshInternal(showCompletionMessage) }
   }
 
-  private suspend fun refreshInternal(showCompletionMessage: Boolean) {
+  private suspend fun refreshInternal(
+    showCompletionMessage: Boolean,
+    origin: FeedRefreshOrigin = FeedRefreshOrigin.MANUAL,
+  ) {
     if (_state.value.refreshing) return
     runCatching {
       val feeds = repository.listFeeds().filter(feedSelector)
@@ -69,7 +74,7 @@ class FeedViewModel(
           refreshStatus = if (feeds.isEmpty()) null else "0 / ${feeds.size}",
         )
       }
-      val result = refreshFeeds(feeds) { completed, total ->
+      val result = refreshFeeds(feeds, origin) { completed, total ->
         _state.update { it.copy(refreshStatus = "$completed / $total") }
       }
       reload()
@@ -299,7 +304,9 @@ class FeedViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { imports.importFeedOpml(documentUri) }
         .onSuccess { result ->
-          if (result.added > 0) refreshInternal(showCompletionMessage = false)
+          if (result.added > 0) {
+            refreshInternal(showCompletionMessage = false, origin = FeedRefreshOrigin.IMPORT)
+          }
           _state.update {
             it.copy(
               message = "${result.added}件のフィードをインポートしました（重複 ${result.duplicates}件、スキップ ${result.skipped}件）",

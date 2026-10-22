@@ -18,6 +18,7 @@ import dev.terashima.yomitorirss.AppContainer
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.feature.mail.Mailbox
+import dev.terashima.yomitorirss.feature.rss.FeedRefreshOrigin
 import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
@@ -47,7 +48,7 @@ internal class IntegratedRefreshWorker(
     runIsolatedRefresh {
       val feeds = container.feedRepository.listFeeds()
         .filter { RedditSourceBoundary.isNonRedditFeed(it.feedUrl) }
-      container.refreshFeedsUseCase(feeds) { _, _ -> }
+      container.refreshFeedsUseCase(feeds, FeedRefreshOrigin.BACKGROUND) { _, _ -> }
     }
     runIsolatedRefresh { container.redditRepository.refreshAll { _, _ -> } }
     runIsolatedRefresh { container.videoProviderRepository.refreshProviders() }
