@@ -232,6 +232,7 @@ class AppContainer(
   val videoProviderRepository get() = videoRuntime.providerRepository
   val feedImportRepository get() = contentRuntime.feedImportRepository
   val refreshFeedsUseCase get() = contentRuntime.refreshFeedsUseCase
+  val rssRefreshPreferences get() = contentRuntime.rssRefreshPreferences
   val saveSharedBookmarkUseCase get() = contentRuntime.saveSharedBookmarkUseCase
   val widgetRepository get() = contentRuntime.widgetRepository
   val widgetRefreshScheduler get() = supportingRuntime.widgetRefreshScheduler
