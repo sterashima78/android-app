@@ -19,6 +19,16 @@ interface FeedRepository {
   suspend fun setFolderContentType(folderId: String, contentType: ContentType?)
   suspend fun refreshFeed(feed: Feed)
 
+  /**
+   * Atomically checks freshness and refreshes when due. Implementations without a persistent
+   * feed store may delegate to refreshFeed; the RSS data implementation enforces the policy.
+   * Returns false if no fetch is needed or a concurrent request has already completed.
+   */
+  suspend fun refreshFeedIfDue(feed: Feed, minimumAgeMillis: Long, failureRetryMillis: Long): Boolean {
+    refreshFeed(feed)
+    return true
+  }
+
   fun listWebScrapingRules(): List<RssWebScrapingRule> = emptyList()
 
   fun saveWebScrapingRule(
