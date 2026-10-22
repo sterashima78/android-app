@@ -34,8 +34,10 @@ internal class OkHttpHttpClient(
 
     val tag = coroutineContext[TrafficAttribution]?.tag ?: request.trafficTag
     var receivedBytes = 0L
+    var responseStatus: Int? = null
     try {
       client.newCall(okhttpRequest).execute().use { response ->
+        responseStatus = response.code
         val maxResponseBytes = if (response.isSuccessful) {
           request.maxResponseBytes
         } else {
@@ -73,7 +75,9 @@ internal class OkHttpHttpClient(
       throw error.toNetworkError()
     } finally {
       // Decoded payload bytes, not IP-layer bytes; partial responses are included.
-      TrafficTelemetry.record(tag, receivedBytes, request.body?.size?.toLong() ?: 0L)
+      TrafficTelemetry.record(
+        tag, receivedBytes, request.body?.size?.toLong() ?: 0L, request.trafficResource, responseStatus,
+      )
     }
   }
 }

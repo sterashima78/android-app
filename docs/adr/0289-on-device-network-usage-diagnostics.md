@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-10-21
 - Refines: [ADR-0155](0155-application-scope-http-transport.md)
+- Refined by: [ADR-0290](0290-rss-feed-network-diagnostics.md)
 
 ## Context
 Androidのアプリ全体の通信量からは、記事更新・AI生成・動画・モデル取得のどの処理がデータを使ったか区別できない。原因不明の転送を分析するため、通信内容や利用者情報を収集せずに機能別の転送量を集計する。

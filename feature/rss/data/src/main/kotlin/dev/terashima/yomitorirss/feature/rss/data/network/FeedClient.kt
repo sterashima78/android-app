@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.feature.rss.data.network
 import dev.terashima.yomitorirss.core.network.HttpClient
 import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
+import dev.terashima.yomitorirss.core.network.TrafficResource
 import dev.terashima.yomitorirss.feature.rss.FeedCandidate
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
 import org.jsoup.Jsoup
@@ -49,7 +50,12 @@ internal class FeedClient(
     }
   }
 
-  suspend fun fetchFeed(url: String, etag: String? = null, lastModified: String? = null): FetchResult {
+  suspend fun fetchFeed(
+    url: String,
+    etag: String? = null,
+    lastModified: String? = null,
+    trafficResource: TrafficResource? = null,
+  ): FetchResult {
     val response = client.execute(
       request(
         normalizeInputUrl(url),
@@ -57,6 +63,7 @@ internal class FeedClient(
           etag?.let { put("If-None-Match", it) }
           lastModified?.let { put("If-Modified-Since", it) }
         },
+        trafficResource,
       ),
     )
     if (response.statusCode == 304) return FetchResult(null, etag, lastModified, notModified = true)
@@ -155,8 +162,13 @@ internal class FeedClient(
     return ParsedFeed(title, feedUrl, siteUrl, articles)
   }
 
-  private fun request(url: String, additionalHeaders: Map<String, String> = emptyMap()): HttpRequest = HttpRequest(
+  private fun request(
+    url: String,
+    additionalHeaders: Map<String, String> = emptyMap(),
+    trafficResource: TrafficResource? = null,
+  ): HttpRequest = HttpRequest(
     trafficTag = "rss",
+    trafficResource = trafficResource,
     url = url,
     headers = mapOf(
       "Accept" to "application/atom+xml, application/rss+xml, application/rdf+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5",

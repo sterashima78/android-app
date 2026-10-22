@@ -17,6 +17,7 @@ data class HttpRequest(
   val maxResponseBytes: Long = DEFAULT_MAX_RESPONSE_BYTES,
   val maxErrorResponseBytes: Long = maxResponseBytes,
   val trafficTag: String = "other",
+  val trafficResource: TrafficResource? = null,
 ) {
   init {
     require(maxResponseBytes in 1..Int.MAX_VALUE.toLong()) { "maxResponseBytes は1以上Int.MAX_VALUE以下である必要があります" }

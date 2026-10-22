@@ -4,17 +4,20 @@ import android.content.Context
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
+import dev.terashima.yomitorirss.core.network.TrafficResource
 import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
+import dev.terashima.yomitorirss.feature.rss.FeedRefreshContext
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingPreview
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
 import dev.terashima.yomitorirss.feature.rss.data.network.WebScrapingFeedClient
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.coroutines.coroutineContext
 
 class DefaultFeedRepository(
   database: DatabaseConnection,
@@ -108,7 +111,15 @@ class DefaultFeedRepository(
       val result = if (customRule != null) {
         requireWebScrapingClient().fetchFeed(feed.feedUrl, customRule)
       } else {
-        client.fetchFeed(feed.feedUrl, feed.etag, feed.lastModified)
+        client.fetchFeed(
+          feed.feedUrl,
+          feed.etag,
+          feed.lastModified,
+          trafficResource = TrafficResource(
+            feed.id,
+            coroutineContext[FeedRefreshContext]?.origin?.diagnosticCode ?: "other",
+          ),
+        )
       }
       if (result.notModified) {
         store.updateFeedNotModified(feed.id)
