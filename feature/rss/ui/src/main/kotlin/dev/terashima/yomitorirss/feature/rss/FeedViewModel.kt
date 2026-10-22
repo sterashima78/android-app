@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import dev.terashima.yomitorirss.feature.article.ContentType
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +45,7 @@ class FeedViewModel(
 ) : ViewModel() {
   private val _state = MutableStateFlow(FeedUiState())
   val state: StateFlow<FeedUiState> = _state.asStateFlow()
+  private val localRefreshRunning = AtomicBoolean(false)
 
   init {
     viewModelScope.launch(Dispatchers.IO) {
@@ -77,7 +79,7 @@ class FeedViewModel(
     showCompletionMessage: Boolean,
     mode: FeedRefreshMode = FeedRefreshMode.FORCE,
   ) {
-    if (_state.value.refreshing) return
+    if (!localRefreshRunning.compareAndSet(false, true)) return
     try {
       val feeds = repository.listFeeds().filter(feedSelector)
         .filter { mode != FeedRefreshMode.IMPORT || it.lastFetchedAt == null }
@@ -94,7 +96,7 @@ class FeedViewModel(
       reload()
       _state.update {
         it.copy(
-          refreshing = false,
+          refreshing = repository.refreshingFeedIds.value.any { id -> it.feeds.any { feed -> feed.id == id } },
           refreshStatus = null,
           message = when {
             !showCompletionMessage -> it.message
@@ -117,6 +119,8 @@ class FeedViewModel(
           message = "フィードを更新できませんでした: ${error.userMessage()}",
         )
       }
+    } finally {
+      localRefreshRunning.set(false)
     }
   }
 
