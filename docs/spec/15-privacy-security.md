@@ -2,7 +2,7 @@
 
 - 公開リポジトリへcredential、token、OAuth secret、実ユーザーのメールアドレス、健康データ、バックアップ、SMB接続情報等を保存しない。
 - fixtureとtest dataには人工データを利用する。
-- 通信量の端末内診断は機能・日付・通信方向・回線・バイト数だけを90日以内で保持する。URL、HTTP本文、AI入力出力、credential、個別通信時刻は記録せず、backup/export対象としない。OSから取得可能なアプリ自身のUID通信量との差は参考値としてのみ表示する。
+- 通信量の端末内診断は機能・日付・通信方向・回線・バイト数、および通常RSSフィードについては匿名フィードID・取得契機・取得試行/304回数を90日以内で保持する。フィードタイトルは診断用に重複保存せず、画面表示時のみ既存の購読情報から解決する。URL、host、HTTP本文、AI入力出力、credential、個別通信時刻は記録せず、backup/export対象としない。OSから取得可能なアプリ自身のUID通信量との差は参考値としてのみ表示する。
 - backup対象のSharedPreferencesはallowlist方式とし、将来追加される値を暗黙に外部backupへ含めない。
 - Health Connect由来のread dataをBackup、AI task、外部APIへ流さない。
 - AI処理は端末内runtimeを基本とし、任意のアプリ内データアクセス権限をモデルへ与えない。
