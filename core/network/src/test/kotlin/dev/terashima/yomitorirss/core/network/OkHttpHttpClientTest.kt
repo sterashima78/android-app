@@ -67,6 +67,26 @@ class OkHttpHttpClientTest {
     assertArrayEquals("OK".toByteArray(), response.body)
   }
 
+  @Test
+  fun `HTTP 304応答の受信本文が0でも取得回数を記録する`() = withServer(
+    "HTTP/1.1 304 Not Modified\r\nContent-Length: 0\r\n\r\n",
+  ) { url ->
+    val previous = TrafficTelemetry.recorder
+    var observed: TrafficTransfer? = null
+    try {
+      TrafficTelemetry.recorder = { observed = it }
+      val resource = TrafficResource("feed-1", "background")
+      val response = runBlocking {
+        client.execute(HttpRequest(url, trafficTag = "rss", trafficResource = resource))
+      }
+      assertEquals(304, response.statusCode)
+      assertEquals(0, response.body.size)
+      assertEquals(TrafficTransfer("rss", 0, 0, resource, 304), observed)
+    } finally {
+      TrafficTelemetry.recorder = previous
+    }
+  }
+
   private fun withServer(rawResponse: String, assertion: (String) -> Unit) {
     ServerSocket(0).use { server ->
       val serverThread = thread(name = "http-response-test-server") {
