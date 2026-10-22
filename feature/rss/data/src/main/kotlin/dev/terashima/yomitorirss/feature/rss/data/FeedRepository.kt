@@ -16,7 +16,12 @@ import dev.terashima.yomitorirss.feature.rss.RssWebScrapingPreview
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
 import dev.terashima.yomitorirss.feature.rss.data.network.WebScrapingFeedClient
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
 
 class DefaultFeedRepository(
@@ -28,6 +33,10 @@ class DefaultFeedRepository(
   private val onFeedUpdated: suspend (Feed) -> Unit = {},
 ) : FeedRepository {
   private val store = FeedStore(database, contentSourceGateway)
+  private val refreshLocks = ConcurrentHashMap<String, Mutex>()
+  private val lastAttempts = ConcurrentHashMap<String, RefreshAttempt>()
+  // Failed attempts are transient: a process restart permits an immediate retry.
+  private val lastFailureMillis = ConcurrentHashMap<String, Long>()
   private val webScrapingRules = RssWebScrapingRuleStore(database)
   private val client = FeedClient(httpClient)
   private val webScrapingClient = applicationContext?.let { WebScrapingFeedClient(it.applicationContext) }
@@ -106,32 +115,70 @@ class DefaultFeedRepository(
   }
 
   override suspend fun refreshFeed(feed: Feed) {
-    try {
-      val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), feed.feedUrl)
-      val result = if (customRule != null) {
-        requireWebScrapingClient().fetchFeed(feed.feedUrl, customRule)
-      } else {
-        client.fetchFeed(
-          feed.feedUrl,
-          feed.etag,
-          feed.lastModified,
-          trafficResource = TrafficResource(
-            feed.id,
-            coroutineContext[FeedRefreshContext]?.origin?.diagnosticCode ?: "other",
-          ),
-        )
+    refreshFeedIfDue(feed, minimumAgeMillis = 0L, failureRetryMillis = 0L)
+  }
+
+  override suspend fun refreshFeedIfDue(
+    feed: Feed,
+    minimumAgeMillis: Long,
+    failureRetryMillis: Long,
+  ): Boolean {
+    require(minimumAgeMillis >= 0 && failureRetryMillis >= 0)
+    // All callers (UI, periodic worker, widget and subscriptions) share this repository instance.
+    val lock = refreshLocks.computeIfAbsent(feed.id) { Mutex() }
+    val observedAttempt = lastAttempts[feed.id]
+    return lock.withLock {
+      // An overlapping caller receives the prior outcome without issuing another HTTP request.
+      val completedAttempt = lastAttempts[feed.id]
+      if (completedAttempt !== observedAttempt) {
+        completedAttempt?.error?.let { throw it }
+        return@withLock false
       }
-      if (result.notModified) {
-        store.updateFeedNotModified(feed.id)
-      } else {
-        store.updateFeedSuccess(feed, requireNotNull(result.feed), result.etag, result.lastModified)
+
+      // Never trust the caller's snapshot: a different route may have refreshed the feed.
+      val current = store.listFeeds().firstOrNull { it.id == feed.id } ?: return@withLock false
+      val now = System.currentTimeMillis()
+      val lastSuccess = current.lastFetchedAt?.let { timestamp ->
+        runCatching { Instant.parse(timestamp).toEpochMilli() }.getOrNull()
       }
-      dataChanges.notifyChanged()
-      runCatching { onFeedUpdated(feed) }
-    } catch (error: Throwable) {
-      store.updateFeedError(feed.id, error.userMessage())
-      dataChanges.notifyChanged()
-      throw error
+      if (minimumAgeMillis > 0 && lastSuccess != null &&
+        now - lastSuccess >= 0 && now - lastSuccess < minimumAgeMillis
+      ) {
+        return@withLock false
+      }
+      val lastFailure = lastFailureMillis[feed.id]
+      if (failureRetryMillis > 0 && lastFailure != null &&
+        now - lastFailure >= 0 && now - lastFailure < failureRetryMillis
+      ) {
+        return@withLock false
+      }
+
+      try {
+        val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), current.feedUrl)
+        val result = if (customRule != null) {
+          requireWebScrapingClient().fetchFeed(current.feedUrl, customRule)
+        } else {
+          client.fetchFeed(current.feedUrl, current.etag, current.lastModified)
+        }
+        if (result.notModified) {
+          store.updateFeedNotModified(current.id)
+        } else {
+          store.updateFeedSuccess(current, requireNotNull(result.feed), result.etag, result.lastModified)
+        }
+        lastFailureMillis.remove(feed.id)
+        lastAttempts[feed.id] = RefreshAttempt()
+        dataChanges.notifyChanged()
+        runCatching { onFeedUpdated(current) }
+        true
+      } catch (error: CancellationException) {
+        throw error
+      } catch (error: Throwable) {
+        store.updateFeedError(current.id, error.userMessage())
+        lastFailureMillis[feed.id] = System.currentTimeMillis()
+        lastAttempts[feed.id] = RefreshAttempt(error)
+        dataChanges.notifyChanged()
+        throw error
+      }
     }
   }
 
@@ -176,6 +223,8 @@ class DefaultFeedRepository(
     "Web スクレイピングにはAndroidコンテキストが必要です"
   }
 }
+
+private class RefreshAttempt(val error: Throwable? = null)
 
 private fun Throwable.userMessage(): String =
   generateSequence(this) { it.cause }
