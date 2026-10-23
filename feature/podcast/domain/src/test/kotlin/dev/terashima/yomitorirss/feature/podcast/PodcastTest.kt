@@ -1044,30 +1044,51 @@ private class FakePodcastRepository(
     candidates: List<PodcastFeedEntry>,
     createdAtEpochMillis: Long,
     clusteringStatus: PodcastClusteringStatus?,
+  ): PodcastEpisode? = reserveEpisode(
+    program, candidates, createdAtEpochMillis, clusteringStatus, emptyList(), null,
+  )
+
+  override suspend fun reserveEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus?,
+    repeatedCandidates: List<PodcastFeedEntry>,
+    repeatedClusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? {
-    val available = candidates.distinctBy { it.articleId }.filterNot { it.articleId in consumed }
-    if (available.isEmpty()) return null
-    val chapters = available.mapIndexed { index, item ->
-      (item.chapterPosition ?: index) to item
-    }.groupBy({ it.first }, { it.second }).toSortedMap().values.toList()
+    val seenIds = mutableSetOf<String>()
+    val partitions = listOf(
+      Triple(candidates, clusteringStatus, false),
+      Triple(repeatedCandidates, repeatedClusteringStatus, true),
+    )
     var first: PodcastEpisode? = null
-    chapters.chunked(program.maxArticlesPerEpisode).forEachIndexed { chunkIndex, selectedClusters ->
-      val selected = selectedClusters.flatMapIndexed { chapterIndex, entries ->
-        entries.map { it.copy(chapterPosition = chapterIndex) }
+    var episodeIndex = 0
+    for ((entries, status, repeated) in partitions) {
+      val available = entries.filter { seenIds.add(it.articleId) && it.articleId !in consumed }
+      val chapters = available.mapIndexed { index, item ->
+        (item.chapterPosition ?: index) to item
+      }.groupBy({ it.first }, { it.second }).toSortedMap().values.toList()
+      for (selectedClusters in chapters.chunked(program.maxArticlesPerEpisode)) {
+        val selected = selectedClusters.flatMapIndexed { chapterIndex, articles ->
+          articles.map { it.copy(chapterPosition = chapterIndex) }
+        }
+        consumed += selected.map { it.articleId }
+        val title = buildEpisodeTitle(program.name, createdAtEpochMillis + episodeIndex) +
+          if (repeated) "（既報ニュース）" else ""
+        val episode = PodcastEpisode(
+          id = "episode-${episodes.size + 1}",
+          programId = program.id,
+          title = title,
+          createdAtEpochMillis = createdAtEpochMillis + episodeIndex,
+          status = if (episodeIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED,
+          articles = selected.map { it.toEpisodeArticle() },
+          clusteringMode = program.clusteringMode,
+          clusteringStatus = status,
+        )
+        episodes += episode
+        if (first == null) first = episode
+        episodeIndex += 1
       }
-      consumed += selected.map { it.articleId }
-      val episode = PodcastEpisode(
-        id = "episode-${episodes.size + 1}",
-        programId = program.id,
-        title = program.name,
-        createdAtEpochMillis = createdAtEpochMillis + chunkIndex,
-        status = if (chunkIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED,
-        articles = selected.map { it.toEpisodeArticle() },
-        clusteringMode = program.clusteringMode,
-        clusteringStatus = clusteringStatus,
-      )
-      episodes += episode
-      if (first == null) first = episode
     }
     return first
   }
