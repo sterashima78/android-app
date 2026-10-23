@@ -42,10 +42,6 @@ fun SettingsContent(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   integratedRefreshIntervalMinutes: Long,
   onIntegratedRefreshIntervalChange: (Long) -> Unit,
-  rssScreenRefreshIntervalMinutes: Long,
-  onRssScreenRefreshIntervalChange: (Long) -> Unit,
-  rssFailureRetryIntervalMinutes: Long,
-  onRssFailureRetryIntervalChange: (Long) -> Unit,
   notificationPermissionGranted: Boolean,
   onRequestNotificationPermission: () -> Unit,
   biometricLockEnabled: Boolean,
@@ -94,24 +90,6 @@ fun SettingsContent(
       SettingsIntervalRow(
         intervalMinutes = integratedRefreshIntervalMinutes,
         onIntervalChange = onIntegratedRefreshIntervalChange,
-      )
-    }
-    item {
-      RefreshIntervalSettingRow(
-        title = "RSS画面表示時の再取得間隔",
-        details = "保存済み記事をすぐ表示し、前回取得からこの時間が過ぎたフィードだけ自動更新",
-        selectedMinutes = rssScreenRefreshIntervalMinutes,
-        options = listOf(5L, 15L, 30L, 60L, 180L, 360L),
-        onChange = onRssScreenRefreshIntervalChange,
-      )
-    }
-    item {
-      RefreshIntervalSettingRow(
-        title = "RSS取得失敗後の再試行間隔",
-        details = "自動取得が失敗したフィードを短時間に再取得しないための間隔",
-        selectedMinutes = rssFailureRetryIntervalMinutes,
-        options = listOf(1L, 5L, 15L, 30L, 60L),
-        onChange = onRssFailureRetryIntervalChange,
       )
     }
     item {
@@ -234,37 +212,6 @@ private fun SettingsIntervalRow(
           onClick = {
             expanded = false
             onIntervalChange(interval)
-          },
-        )
-      }
-    }
-  }
-}
-
-@Composable
-private fun RefreshIntervalSettingRow(
-  title: String,
-  details: String,
-  selectedMinutes: Long,
-  options: List<Long>,
-  onChange: (Long) -> Unit,
-) {
-  var expanded by remember { mutableStateOf(false) }
-  Box {
-    ListItem(
-      modifier = Modifier.clickable { expanded = true },
-      headlineContent = { Text(title) },
-      supportingContent = { Text("$details（現在: ${integratedRefreshIntervalLabel(selectedMinutes)}）") },
-      leadingContent = { Icon(Icons.Default.Download, contentDescription = null) },
-      trailingContent = { Icon(Icons.Default.ChevronRight, contentDescription = null) },
-    )
-    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-      options.forEach { minutes ->
-        DropdownMenuItem(
-          text = { Text(integratedRefreshIntervalLabel(minutes)) },
-          onClick = {
-            expanded = false
-            onChange(minutes)
           },
         )
       }

@@ -37,10 +37,12 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(42, db.version)
+    assertEquals(43, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
+    assertTrue("refresh_interval_minutes" in columnNames(db, "feeds"))
+    assertTrue("refresh_interval_minutes" in columnNames(db, "rss_web_scraping_rules"))
     assertTrue("timeout_seconds" in columnNames(db, "rss_web_scraping_rules"))
     assertTrue("revision" in columnNames(db, "rss_recommendation_policy"))
     assertTrue("learned_priority_condition" in columnNames(db, "rss_recommendation_policy"))
