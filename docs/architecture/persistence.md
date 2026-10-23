@@ -83,7 +83,7 @@ ADR-0099 が backup archive に含める SharedPreferences は `BackupPreference
 
 RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`feeds` / `feed_folders` に加えて Web ページから synthetic feed を生成する user-defined rule を `rss_web_scraping_rules` に保存する。
 
-`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時、任意の自動取得間隔を保持する RSS-owned durable user data である。`feeds` の自動取得間隔設定はルール側の設定より優先し、どちらもnullの場合は共通の取得間隔を使用する。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
+`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時、任意の自動取得間隔を保持する RSS-owned durable user data である。`feeds` の自動取得間隔設定はルール側の設定より優先し、どちらもnullの場合は共通の取得間隔を使用する。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB は RSS の schema initializer で現行定義を作成し、version 42 からの更新時は version 43 migration で既存テーブルへ列を追加する。なお、Web取得ルールのテーブルを初めて導入した際は、そのテーブル追加だけを理由とする version bump は行わなかった。
 
 RSS記事推薦では同じRSS schema initializerから次のRSS-owned tableを確保する。
 
