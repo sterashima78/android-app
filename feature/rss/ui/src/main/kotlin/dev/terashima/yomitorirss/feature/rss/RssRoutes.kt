@@ -162,6 +162,7 @@ fun FeedRoute(
         onDeleteFolder = feedViewModel::deleteFolder,
         onMoveFeed = feedViewModel::moveFeedToFolder,
         onSetFeedContentType = feedViewModel::setFeedContentType,
+        onSetFeedRefreshInterval = feedViewModel::setFeedRefreshInterval,
         onSetFolderContentType = feedViewModel::setFolderContentType,
       )
     }
@@ -190,9 +191,19 @@ fun RssSettingsRoute(
   modifier: Modifier,
   feedViewModel: FeedViewModel,
   rssViewModel: RssViewModel,
+  initialScreenRefreshIntervalMinutes: Long,
+  onScreenRefreshIntervalChange: (Long) -> Unit,
+  initialFailureRetryIntervalMinutes: Long,
+  onFailureRetryIntervalChange: (Long) -> Unit,
 ) {
   val state by feedViewModel.state.collectAsState()
   val rssState by rssViewModel.state.collectAsState()
+  var screenRefreshIntervalMinutes by remember(initialScreenRefreshIntervalMinutes) {
+    mutableStateOf(initialScreenRefreshIntervalMinutes)
+  }
+  var failureRetryIntervalMinutes by remember(initialFailureRetryIntervalMinutes) {
+    mutableStateOf(initialFailureRetryIntervalMinutes)
+  }
 
   if (!state.initialized || !rssState.initialized) {
     LoadingFeature(modifier)
@@ -200,6 +211,16 @@ fun RssSettingsRoute(
     RssWebScrapingRulesUi(
       modifier = modifier,
       recommendationPolicy = rssState.recommendationPolicy,
+      screenRefreshIntervalMinutes = screenRefreshIntervalMinutes,
+      onScreenRefreshIntervalChange = { minutes ->
+        screenRefreshIntervalMinutes = minutes
+        onScreenRefreshIntervalChange(minutes)
+      },
+      failureRetryIntervalMinutes = failureRetryIntervalMinutes,
+      onFailureRetryIntervalChange = { minutes ->
+        failureRetryIntervalMinutes = minutes
+        onFailureRetryIntervalChange(minutes)
+      },
       recommendationPendingFeedbackCount = rssState.recommendationPendingFeedbackCount,
       recommendationPendingPriorityFeedbackCount = rssState.recommendationPendingPriorityFeedbackCount,
       onSaveRecommendationCondition = rssViewModel::saveRecommendationCondition,

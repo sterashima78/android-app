@@ -253,6 +253,14 @@ class FeedViewModel(
     }
   }
 
+  fun setFeedRefreshInterval(feed: Feed, minutes: Long?) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.setFeedRefreshInterval(feed.id, minutes) }
+        .onSuccess { _state.update { it.copy(message = "${feed.title}の自動取得間隔を変更しました") } }
+        .onFailure(::showError)
+    }
+  }
+
   fun setFolderContentType(folder: FeedFolder, contentType: ContentType?) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.setFolderContentType(folder.id, contentType) }
@@ -266,10 +274,11 @@ class FeedViewModel(
     urlPattern: String,
     functionCode: String,
     timeoutSeconds: Int,
+    refreshIntervalMinutes: Long?,
   ) {
     viewModelScope.launch(Dispatchers.IO) {
       runCatching {
-        repository.saveWebScrapingRule(id, urlPattern, functionCode, timeoutSeconds)
+        repository.saveWebScrapingRule(id, urlPattern, functionCode, timeoutSeconds, refreshIntervalMinutes)
       }.onSuccess {
         reload()
         _state.update { it.copy(message = "Web 取得ルールを保存しました") }
