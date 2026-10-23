@@ -256,6 +256,18 @@ interface PodcastRepository {
     createdAtEpochMillis: Long,
     clusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? = reserveEpisode(program, candidates, createdAtEpochMillis)
+  /** Reserve ordinary episodes first, then previously covered episodes in the same transaction. */
+  suspend fun reserveEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus?,
+    repeatedCandidates: List<PodcastFeedEntry>,
+    repeatedClusteringStatus: PodcastClusteringStatus?,
+  ): PodcastEpisode? {
+    require(repeatedCandidates.isEmpty()) { "repository does not support previously covered episodes" }
+    return reserveEpisode(program, candidates, createdAtEpochMillis, clusteringStatus)
+  }
   suspend fun reserveComparisonEpisode(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
