@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -61,6 +62,7 @@ fun FeedScreen(
   onDeleteFolder: (FeedFolder) -> Unit,
   onMoveFeed: (Feed, String?) -> Unit,
   onSetFeedContentType: (Feed, ContentType?) -> Unit,
+  onSetFeedRefreshInterval: (Feed, Long?) -> Unit,
   onSetFolderContentType: (FeedFolder, ContentType?) -> Unit,
 ) {
   var creatingFolder by remember { mutableStateOf(false) }
@@ -69,6 +71,7 @@ fun FeedScreen(
   var deletingFolder by remember { mutableStateOf<FeedFolder?>(null) }
   var movingFeed by remember { mutableStateOf<Feed?>(null) }
   var editingFeedContentType by remember { mutableStateOf<Feed?>(null) }
+  var editingFeedInterval by remember { mutableStateOf<Feed?>(null) }
   var editingFolderContentType by remember { mutableStateOf<FeedFolder?>(null) }
   val uncategorized = feeds.filter { it.folderId == null || folders.none { folder -> folder.id == it.folderId } }
 
@@ -120,6 +123,7 @@ fun FeedScreen(
           onRename = { renamingFeed = feed },
           onMove = { movingFeed = feed },
           onEditContentType = { editingFeedContentType = feed },
+          onEditRefreshInterval = { editingFeedInterval = feed },
           onDelete = onDelete,
         )
       }
@@ -155,6 +159,7 @@ fun FeedScreen(
             onRename = { renamingFeed = feed },
             onMove = { movingFeed = feed },
             onEditContentType = { editingFeedContentType = feed },
+            onEditRefreshInterval = { editingFeedInterval = feed },
             onDelete = onDelete,
           )
         }
@@ -247,6 +252,28 @@ fun FeedScreen(
     )
   }
 
+  editingFeedInterval?.let { feed ->
+    AlertDialog(
+      onDismissRequest = { editingFeedInterval = null },
+      title = { Text("自動取得間隔: ${feed.title}") },
+      text = {
+        Column {
+          Text("設定しなければ一致するWeb取得ルール、または共通設定を使用します。")
+          RssRefreshIntervalPicker(
+            selectedMinutes = feed.refreshIntervalMinutes,
+            inheritedLabel = "取得間隔を継承",
+            allowInheritance = true,
+            onSelect = { minutes ->
+              editingFeedInterval = null
+              onSetFeedRefreshInterval(feed, minutes)
+            },
+          )
+        }
+      },
+      confirmButton = { TextButton(onClick = { editingFeedInterval = null }) { Text("閉じる") } },
+    )
+  }
+
   editingFolderContentType?.let { folder ->
     ContentTypeDialog(
       title = folder.name,
@@ -310,6 +337,7 @@ private fun FeedCard(
   onRename: () -> Unit,
   onMove: () -> Unit,
   onEditContentType: () -> Unit,
+  onEditRefreshInterval: () -> Unit,
   onDelete: (Feed) -> Unit,
 ) {
   val effectiveType = feed.contentTypeOverride ?: inheritedContentType
@@ -332,6 +360,11 @@ private fun FeedCard(
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Text(
+          "自動取得: " + (feed.refreshIntervalMinutes?.let(::rssRefreshIntervalLabel) ?: "取得間隔を継承"),
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         feed.lastFetchedAt?.let {
           Text("最終更新 ${feedTimeLabel(it)}", style = MaterialTheme.typography.labelSmall)
         }
@@ -344,6 +377,9 @@ private fun FeedCard(
       }
       IconButton(onClick = onEditContentType) {
         Icon(Icons.Default.Tune, contentDescription = "コンテンツ種別を変更")
+      }
+      IconButton(onClick = onEditRefreshInterval) {
+        Icon(Icons.Default.Schedule, contentDescription = "自動取得間隔を変更")
       }
       IconButton(onClick = onMove) {
         Icon(Icons.Default.DriveFileMove, contentDescription = "フォルダを移動")

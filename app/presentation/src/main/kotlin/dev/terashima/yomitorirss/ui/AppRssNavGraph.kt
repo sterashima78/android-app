@@ -105,6 +105,10 @@ internal fun NavGraphBuilder.registerRssDestinations(
       modifier = Modifier.fillMaxSize(),
       feedViewModel = feedViewModel,
       rssViewModel = rssViewModel,
+      initialScreenRefreshIntervalMinutes = routeDependencies.rssScreenRefreshIntervalMinutes(),
+      onScreenRefreshIntervalChange = routeDependencies::setRssScreenRefreshIntervalMinutes,
+      initialFailureRetryIntervalMinutes = routeDependencies.rssFailureRetryIntervalMinutes(),
+      onFailureRetryIntervalChange = routeDependencies::setRssFailureRetryIntervalMinutes,
     )
   }
 }

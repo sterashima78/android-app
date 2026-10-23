@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.workDataOf
 import androidx.work.WorkManager
 import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
@@ -17,8 +18,9 @@ class WorkManagerWidgetRefreshScheduler(
 ) : WidgetRefreshScheduler {
   private val appContext = context.applicationContext
 
-  override fun enqueue() {
+  override fun enqueue(force: Boolean) {
     val request = OneTimeWorkRequestBuilder<UnreadWidgetRefreshWorker>()
+      .setInputData(workDataOf("force_refresh" to force))
       .setConstraints(backgroundDataFetchConstraints(appContext))
       .build()
     WorkManager.getInstance(appContext).enqueueUniqueWork(

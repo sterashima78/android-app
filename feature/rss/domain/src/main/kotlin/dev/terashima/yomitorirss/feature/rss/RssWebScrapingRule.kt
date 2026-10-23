@@ -10,6 +10,7 @@ data class RssWebScrapingRule(
   val functionCode: String,
   val timeoutSeconds: Int = DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
   val updatedAt: Long,
+  val refreshIntervalMinutes: Long? = null,
 )
 
 data class RssWebScrapingItemPreview(

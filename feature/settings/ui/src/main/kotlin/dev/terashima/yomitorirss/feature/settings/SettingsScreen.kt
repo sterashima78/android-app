@@ -37,10 +37,6 @@ fun SettingsFeatureScreen(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   initialIntegratedRefreshIntervalMinutes: Long,
   onIntegratedRefreshIntervalChange: (Long) -> Unit,
-  initialRssScreenRefreshIntervalMinutes: Long,
-  onRssScreenRefreshIntervalChange: (Long) -> Unit,
-  initialRssFailureRetryIntervalMinutes: Long,
-  onRssFailureRetryIntervalChange: (Long) -> Unit,
   initialNotificationPermissionGranted: Boolean,
   onRequestNotificationPermission: ((Boolean) -> Unit) -> Unit,
   biometricLockEnabled: Boolean,
@@ -59,12 +55,6 @@ fun SettingsFeatureScreen(
   var integratedRefreshIntervalMinutes by remember(initialIntegratedRefreshIntervalMinutes) {
     mutableStateOf(initialIntegratedRefreshIntervalMinutes)
   }
-  var rssScreenRefreshIntervalMinutes by remember(initialRssScreenRefreshIntervalMinutes) {
-    mutableStateOf(initialRssScreenRefreshIntervalMinutes)
-  }
-  var rssFailureRetryIntervalMinutes by remember(initialRssFailureRetryIntervalMinutes) {
-    mutableStateOf(initialRssFailureRetryIntervalMinutes)
-  }
   var notificationPermissionGranted by remember(initialNotificationPermissionGranted) {
     mutableStateOf(initialNotificationPermissionGranted)
   }
@@ -80,16 +70,6 @@ fun SettingsFeatureScreen(
     onIntegratedRefreshIntervalChange = { intervalMinutes ->
       integratedRefreshIntervalMinutes = intervalMinutes
       onIntegratedRefreshIntervalChange(intervalMinutes)
-    },
-    rssScreenRefreshIntervalMinutes = rssScreenRefreshIntervalMinutes,
-    onRssScreenRefreshIntervalChange = { minutes ->
-      rssScreenRefreshIntervalMinutes = minutes
-      onRssScreenRefreshIntervalChange(minutes)
-    },
-    rssFailureRetryIntervalMinutes = rssFailureRetryIntervalMinutes,
-    onRssFailureRetryIntervalChange = { minutes ->
-      rssFailureRetryIntervalMinutes = minutes
-      onRssFailureRetryIntervalChange(minutes)
     },
     notificationPermissionGranted = notificationPermissionGranted,
     onRequestNotificationPermission = {

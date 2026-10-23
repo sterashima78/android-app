@@ -200,6 +200,12 @@ internal class AppContentRuntimeDependencies(
       feedRepository = feedRepository,
       bookmarkRepository = bookmarkRepository,
       sourceSelector = RedditSourceBoundary::isNonRedditFeed,
+      automaticIntervalMinutes = {
+        BackgroundDataFetchPreferences(application).integratedRefreshIntervalMinutes
+      },
+      failureRetryIntervalMinutes = {
+        rssRefreshPreferences.failureRetryIntervalMinutes
+      },
       onReadLaterSaved = { article ->
         rssRecommendationService.recordPriorityFeedback(article)
         rssRecommendationTaskScheduler.scheduleFeedbackLearning()

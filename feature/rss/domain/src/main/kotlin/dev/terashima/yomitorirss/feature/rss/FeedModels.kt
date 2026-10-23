@@ -14,6 +14,7 @@ data class Feed(
   val createdAt: String,
   val folderId: String? = null,
   val contentTypeOverride: ContentType? = null,
+  val refreshIntervalMinutes: Long? = null,
 )
 
 data class FeedFolder(

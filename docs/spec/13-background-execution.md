@@ -23,7 +23,7 @@ models:
 - feature固有Worker、scheduler/controller、queue state interpretationは原則としてowning featureのdata/runtimeが所有する。
 - application-scope の周期更新では通常feed、Reddit、購読型動画Provider、メール等の更新を個別に分離して実行する。購読型動画はVideo-owned provider refresh capabilityを利用し、1件のsubscription失敗で他sourceの更新を中断しない。
 
-- 通常feedの周期更新はRSS-owned更新ポリシーを参照し、直近の取得済みフィードや失敗後の短時間再試行を省略する。フィード単位の排他はUI・周期Worker・ウィジェット・他の購読経路で共有し、周期Worker自体の登録方式やRSS以外のsource更新周期は変更しない。
+- 通常feedの周期更新はRSS-owned更新ポリシーを参照し、フィード個別・一致するWeb取得ルール・共通の順で決まる自動取得間隔より新しい取得済みフィードや、失敗後の短時間再試行を省略する。フィード単位の排他はUI・周期Worker・ウィジェット・他の購読経路で共有し、周期Worker自体の登録方式やRSS以外のsource更新周期は変更しない。個別間隔は周期Workerの起動間隔より短い更新の実行を保証するものではない。
 - 通常feedの更新完了時は、推薦条件が有効なら対象feedの未読記事から評価が必要な記事をRSS-owned queueへ追加する。推薦評価はRSS-owned Workerが記事単位で順次claimし、画面のlifecycleに依存せず処理する。長時間の評価中は低重要度のforeground通知を表示する。
 <!-- formal-requirement
 id: RSS-RECOMMENDATION-QUEUE-001

@@ -33,10 +33,6 @@ internal fun SettingsRoute(
   onBackgroundFetchWifiOnlyChange: (Boolean) -> Unit,
   initialIntegratedRefreshIntervalMinutes: Long,
   onIntegratedRefreshIntervalChange: (Long) -> Unit,
-  initialRssScreenRefreshIntervalMinutes: Long,
-  onRssScreenRefreshIntervalChange: (Long) -> Unit,
-  initialRssFailureRetryIntervalMinutes: Long,
-  onRssFailureRetryIntervalChange: (Long) -> Unit,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
   onOpenWebServer: () -> Unit,
@@ -76,10 +72,6 @@ internal fun SettingsRoute(
     onBackgroundFetchWifiOnlyChange = onBackgroundFetchWifiOnlyChange,
     initialIntegratedRefreshIntervalMinutes = initialIntegratedRefreshIntervalMinutes,
     onIntegratedRefreshIntervalChange = onIntegratedRefreshIntervalChange,
-    initialRssScreenRefreshIntervalMinutes = initialRssScreenRefreshIntervalMinutes,
-    onRssScreenRefreshIntervalChange = onRssScreenRefreshIntervalChange,
-    initialRssFailureRetryIntervalMinutes = initialRssFailureRetryIntervalMinutes,
-    onRssFailureRetryIntervalChange = onRssFailureRetryIntervalChange,
     initialNotificationPermissionGranted =
       context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
     onRequestNotificationPermission = { onResult ->

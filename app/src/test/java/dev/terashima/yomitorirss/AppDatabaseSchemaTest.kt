@@ -37,10 +37,12 @@ class AppDatabaseSchemaTest {
   fun `fresh database composes all feature schemas`() {
     val db = openDatabase().writableDatabase
 
-    assertEquals(42, db.version)
+    assertEquals(43, db.version)
     assertTrue("content_type" in columnNames(db, "feed_folders"))
     assertTrue("content_type" in columnNames(db, "feeds"))
     assertTrue("custom_title" in columnNames(db, "feeds"))
+    assertTrue("refresh_interval_minutes" in columnNames(db, "feeds"))
+    assertTrue("refresh_interval_minutes" in columnNames(db, "rss_web_scraping_rules"))
     assertTrue("timeout_seconds" in columnNames(db, "rss_web_scraping_rules"))
     assertTrue("revision" in columnNames(db, "rss_recommendation_policy"))
     assertTrue("learned_priority_condition" in columnNames(db, "rss_recommendation_policy"))
@@ -130,6 +132,49 @@ class AppDatabaseSchemaTest {
       ),
       tableNames(db),
     )
+  }
+
+  @Test
+  fun `database upgrade from 42 keeps subscriptions and web fetch rules`() {
+    val legacy = context.openOrCreateDatabase(YomitoriDatabase.DB_NAME, Context.MODE_PRIVATE, null)
+    legacy.use { db ->
+      db.execSQL(
+        "CREATE TABLE feeds(" +
+          "id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, custom_title TEXT, " +
+          "feed_url TEXT NOT NULL UNIQUE, site_url TEXT, etag TEXT, last_modified TEXT, " +
+          "last_fetched_at TEXT, last_error TEXT, created_at TEXT NOT NULL, " +
+          "folder_id TEXT, content_type TEXT)",
+      )
+      db.execSQL(
+        "CREATE TABLE rss_web_scraping_rules(" +
+          "id TEXT PRIMARY KEY NOT NULL, url_pattern TEXT NOT NULL UNIQUE, " +
+          "function_code TEXT NOT NULL, timeout_seconds INTEGER NOT NULL, updated_at INTEGER NOT NULL)",
+      )
+      db.execSQL(
+        "INSERT INTO feeds(id, title, feed_url, created_at) VALUES " +
+          "('feed-1', 'Sample', 'https://example.invalid/feed.xml', '2026-01-01T00:00:00Z')",
+      )
+      db.execSQL(
+        "INSERT INTO rss_web_scraping_rules(id, url_pattern, function_code, timeout_seconds, updated_at) " +
+          "VALUES('rule-1', 'https://example.invalid/*', 'async () => ({ items: [] })', 15, 1)",
+      )
+      db.version = 42
+    }
+
+    val upgraded = openDatabase().writableDatabase
+    assertEquals(43, upgraded.version)
+    assertTrue("refresh_interval_minutes" in columnNames(upgraded, "feeds"))
+    assertTrue("refresh_interval_minutes" in columnNames(upgraded, "rss_web_scraping_rules"))
+    upgraded.rawQuery("SELECT id, refresh_interval_minutes FROM feeds", null).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals("feed-1", cursor.getString(0))
+      assertTrue(cursor.isNull(1))
+    }
+    upgraded.rawQuery("SELECT id, refresh_interval_minutes FROM rss_web_scraping_rules", null).use { cursor ->
+      assertTrue(cursor.moveToFirst())
+      assertEquals("rule-1", cursor.getString(0))
+      assertTrue(cursor.isNull(1))
+    }
   }
 
   @Test

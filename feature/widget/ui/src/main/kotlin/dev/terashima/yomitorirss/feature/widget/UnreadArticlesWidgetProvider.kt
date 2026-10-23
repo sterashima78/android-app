@@ -30,7 +30,7 @@ class UnreadArticlesWidgetProvider : AppWidgetProvider() {
   override fun onReceive(context: Context, intent: Intent) {
     super.onReceive(context, intent)
     when (intent.action) {
-      ACTION_REFRESH -> context.widgetRefreshScheduler().enqueue()
+      ACTION_REFRESH -> context.widgetRefreshScheduler().enqueue(force = true)
       ACTION_ITEM -> handleItemAction(context, intent)
     }
   }

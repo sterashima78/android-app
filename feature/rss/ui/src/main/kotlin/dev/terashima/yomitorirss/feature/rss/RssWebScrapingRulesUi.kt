@@ -44,6 +44,10 @@ import androidx.compose.ui.window.DialogProperties
 @Composable
 internal fun RssWebScrapingRulesUi(
   recommendationPolicy: RssRecommendationPolicy,
+  screenRefreshIntervalMinutes: Long,
+  onScreenRefreshIntervalChange: (Long) -> Unit,
+  failureRetryIntervalMinutes: Long,
+  onFailureRetryIntervalChange: (Long) -> Unit,
   recommendationPendingFeedbackCount: Int,
   recommendationPendingPriorityFeedbackCount: Int,
   onSaveRecommendationCondition: (String) -> Unit,
@@ -52,7 +56,7 @@ internal fun RssWebScrapingRulesUi(
   onResetPriorityRecommendationLearning: () -> Unit,
   rules: List<RssWebScrapingRule>,
   testState: WebScrapingRuleTestUiState,
-  onSave: (String?, String, String, Int) -> Unit,
+  onSave: (String?, String, String, Int, Long?) -> Unit,
   onDelete: (RssWebScrapingRule) -> Unit,
   onTest: (String, String, Int, String) -> Unit,
   onClearTest: () -> Unit,
@@ -69,6 +73,26 @@ internal fun RssWebScrapingRulesUi(
     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("自動取得間隔", style = MaterialTheme.typography.titleLarge)
+        Text("画面表示での自動取得と、取得失敗後の再試行を制御します。周期バックグラウンド取得はアプリ全体の周期で起動し、各フィードの間隔を確認します。", style = MaterialTheme.typography.bodySmall)
+        Text("RSS画面表示時", style = MaterialTheme.typography.titleSmall)
+        RssRefreshIntervalPicker(screenRefreshIntervalMinutes, "", false) { minutes ->
+          if (minutes != null) onScreenRefreshIntervalChange(minutes)
+        }
+        Text("取得失敗後の再試行", style = MaterialTheme.typography.titleSmall)
+        RssRefreshIntervalPicker(
+          selectedMinutes = failureRetryIntervalMinutes,
+          inheritedLabel = "",
+          allowInheritance = false,
+          options = listOf(1L, 5L, 15L, 30L, 60L),
+        ) { minutes ->
+          if (minutes != null) onFailureRetryIntervalChange(minutes)
+        }
+      }
+    }
+    item { HorizontalDivider() }
     item {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("記事推薦", style = MaterialTheme.typography.titleLarge)
@@ -222,7 +246,8 @@ internal fun RssWebScrapingRulesUi(
               style = MaterialTheme.typography.bodyMedium,
             )
             Text(
-              "WebView タイムアウト ${rule.timeoutSeconds} 秒",
+              "WebView タイムアウト ${rule.timeoutSeconds} 秒 / 自動取得: " +
+                (rule.refreshIntervalMinutes?.let(::rssRefreshIntervalLabel) ?: "共通設定を使用"),
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -252,8 +277,8 @@ internal fun RssWebScrapingRulesUi(
     RssWebScrapingRuleEditorDialog(
       rule = editingRule,
       testState = testState,
-      onSave = { id, pattern, code, timeout ->
-        onSave(id, pattern, code, timeout)
+      onSave = { id, pattern, code, timeout, refreshInterval ->
+        onSave(id, pattern, code, timeout, refreshInterval)
         creatingRule = false
         editingRule = null
       },
@@ -272,11 +297,12 @@ internal fun RssWebScrapingRulesUi(
 private fun RssWebScrapingRuleEditorDialog(
   rule: RssWebScrapingRule?,
   testState: WebScrapingRuleTestUiState,
-  onSave: (String?, String, String, Int) -> Unit,
+  onSave: (String?, String, String, Int, Long?) -> Unit,
   onTest: (String, String, Int, String) -> Unit,
   onClearTest: () -> Unit,
   onDismiss: () -> Unit,
 ) {
+  var refreshIntervalMinutes by remember(rule?.id) { mutableStateOf(rule?.refreshIntervalMinutes) }
   var urlPattern by remember(rule?.id) { mutableStateOf(rule?.urlPattern.orEmpty()) }
   var functionCode by remember(rule?.id) {
     mutableStateOf(rule?.functionCode ?: DEFAULT_RSS_WEB_SCRAPING_FUNCTION)
@@ -356,6 +382,13 @@ private fun RssWebScrapingRuleEditorDialog(
             },
             isError = timeoutText.isNotBlank() && !timeoutValid,
             singleLine = true,
+          )
+          Text("自動取得間隔", style = MaterialTheme.typography.titleSmall)
+          RssRefreshIntervalPicker(
+            selectedMinutes = refreshIntervalMinutes,
+            inheritedLabel = "共通設定を使用",
+            allowInheritance = true,
+            onSelect = { refreshIntervalMinutes = it },
           )
           Text(
             "関数はページコンテキストで実行され、Promise<{ title, siteUrl?, items }> を返します。" +
@@ -439,7 +472,7 @@ private fun RssWebScrapingRuleEditorDialog(
           TextButton(
             onClick = {
               val timeout = timeoutSeconds ?: return@TextButton
-              onSave(rule?.id, urlPattern, functionCode, timeout)
+              onSave(rule?.id, urlPattern, functionCode, timeout, refreshIntervalMinutes)
             },
             enabled = !testState.running &&
               urlPattern.isNotBlank() &&
