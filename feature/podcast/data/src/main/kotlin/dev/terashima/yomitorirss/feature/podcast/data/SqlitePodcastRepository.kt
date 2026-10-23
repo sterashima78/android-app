@@ -391,7 +391,6 @@ class SqlitePodcastRepository(
             articlePosition += 1
           }
         }
-  
         val episode = PodcastEpisode(
           id = episodeId,
           programId = program.id,
