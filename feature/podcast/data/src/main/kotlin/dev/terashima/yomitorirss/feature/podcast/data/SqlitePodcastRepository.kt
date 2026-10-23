@@ -337,73 +337,73 @@ class SqlitePodcastRepository(
         .toList()
 
       for (selectedClusters in clusteredCandidates.chunked(program.maxArticlesPerEpisode)) {
-      val episodeId = UUID.randomUUID().toString()
-      val status = if (episodeIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
-      val episodeCreatedAt = createdAtEpochMillis + episodeIndex
-      val episodeTitle = buildEpisodeTitle(program.name, episodeCreatedAt) +
-        if (previouslyCovered) "（既報ニュース）" else ""
-      insertOrThrow(
-        "podcast_episodes",
-        null,
-        ContentValues().apply {
-          put("id", episodeId)
-          put("program_id", program.id)
-          put("title", episodeTitle)
-          put("created_at", episodeCreatedAt)
-          put("status", status.name)
-          put("clustering_mode", program.clusteringMode.name)
-          if (partitionStatus == null) putNull("clustering_status") else put("clustering_status", partitionStatus.name)
-        },
-      )
-
-      val episodeArticles = mutableListOf<PodcastEpisodeArticle>()
-      var articlePosition = 0
-      selectedClusters.forEachIndexed { chapterPosition, cluster ->
-        cluster.forEach { article ->
-          insertOrThrow(
-            "podcast_episode_articles",
-            null,
-            ContentValues().apply {
-              put("episode_id", episodeId)
-              put("position", articlePosition)
-              put("chapter_position", chapterPosition)
-              put("article_id", article.articleId)
-              put("feed_id", article.feedId)
-              put("title", article.title)
-              if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
-              if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
-              put("article_url", article.articleUrl)
-              put("feed_content", article.feedContent)
-              put("chapter_status", PodcastChapterGenerationStatus.PENDING.name)
-            },
-          )
-          insertOrThrow(
-            "podcast_consumed_articles",
-            null,
-            ContentValues().apply {
-              put("program_id", program.id)
-              put("article_id", article.articleId)
-              put("episode_id", episodeId)
-              put("consumed_at", createdAtEpochMillis)
-            },
-          )
-          episodeArticles += article.toEpisodeArticle(chapterPosition)
-          articlePosition += 1
+        val episodeId = UUID.randomUUID().toString()
+        val status = if (episodeIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
+        val episodeCreatedAt = createdAtEpochMillis + episodeIndex
+        val episodeTitle = buildEpisodeTitle(program.name, episodeCreatedAt) +
+          if (previouslyCovered) "（既報ニュース）" else ""
+        insertOrThrow(
+          "podcast_episodes",
+          null,
+          ContentValues().apply {
+            put("id", episodeId)
+            put("program_id", program.id)
+            put("title", episodeTitle)
+            put("created_at", episodeCreatedAt)
+            put("status", status.name)
+            put("clustering_mode", program.clusteringMode.name)
+            if (partitionStatus == null) putNull("clustering_status") else put("clustering_status", partitionStatus.name)
+          },
+        )
+  
+        val episodeArticles = mutableListOf<PodcastEpisodeArticle>()
+        var articlePosition = 0
+        selectedClusters.forEachIndexed { chapterPosition, cluster ->
+          cluster.forEach { article ->
+            insertOrThrow(
+              "podcast_episode_articles",
+              null,
+              ContentValues().apply {
+                put("episode_id", episodeId)
+                put("position", articlePosition)
+                put("chapter_position", chapterPosition)
+                put("article_id", article.articleId)
+                put("feed_id", article.feedId)
+                put("title", article.title)
+                if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
+                if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
+                put("article_url", article.articleUrl)
+                put("feed_content", article.feedContent)
+                put("chapter_status", PodcastChapterGenerationStatus.PENDING.name)
+              },
+            )
+            insertOrThrow(
+              "podcast_consumed_articles",
+              null,
+              ContentValues().apply {
+                put("program_id", program.id)
+                put("article_id", article.articleId)
+                put("episode_id", episodeId)
+                put("consumed_at", createdAtEpochMillis)
+              },
+            )
+            episodeArticles += article.toEpisodeArticle(chapterPosition)
+            articlePosition += 1
+          }
         }
-      }
-
-      val episode = PodcastEpisode(
-        id = episodeId,
-        programId = program.id,
-        title = episodeTitle,
-        createdAtEpochMillis = episodeCreatedAt,
-        status = status,
-        articles = episodeArticles,
-        clusteringStatus = partitionStatus,
-        clusteringMode = program.clusteringMode,
-      )
-      if (firstEpisode == null) firstEpisode = episode
-      episodeIndex += 1
+  
+        val episode = PodcastEpisode(
+          id = episodeId,
+          programId = program.id,
+          title = episodeTitle,
+          createdAtEpochMillis = episodeCreatedAt,
+          status = status,
+          articles = episodeArticles,
+          clusteringStatus = partitionStatus,
+          clusteringMode = program.clusteringMode,
+        )
+        if (firstEpisode == null) firstEpisode = episode
+        episodeIndex += 1
       }
     }
     firstEpisode
