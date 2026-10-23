@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -260,7 +261,7 @@ fun FeedScreen(
           Text("設定しなければ一致するWeb取得ルール、または共通設定を使用します。")
           RssRefreshIntervalPicker(
             selectedMinutes = feed.refreshIntervalMinutes,
-            inheritedLabel = "共通設定を使用",
+            inheritedLabel = "取得間隔を継承",
             allowInheritance = true,
             onSelect = { minutes ->
               editingFeedInterval = null
@@ -360,7 +361,7 @@ private fun FeedCard(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
-          "自動取得: " + (feed.refreshIntervalMinutes?.let(::rssRefreshIntervalLabel) ?: "共通設定を使用"),
+          "自動取得: " + (feed.refreshIntervalMinutes?.let(::rssRefreshIntervalLabel) ?: "取得間隔を継承"),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -378,7 +379,7 @@ private fun FeedCard(
         Icon(Icons.Default.Tune, contentDescription = "コンテンツ種別を変更")
       }
       IconButton(onClick = onEditRefreshInterval) {
-        Icon(Icons.Default.Tune, contentDescription = "自動取得間隔を変更")
+        Icon(Icons.Default.Schedule, contentDescription = "自動取得間隔を変更")
       }
       IconButton(onClick = onMove) {
         Icon(Icons.Default.DriveFileMove, contentDescription = "フォルダを移動")
