@@ -333,7 +333,7 @@ class PodcastTest {
   }
 
   @Test
-  fun `直近48時間のアーカイブで既報の出来事だけを省き新しいニュースを集約する`() = runSuspend {
+  fun `直近48時間のアーカイブで既報を別エピソードに分け新しいニュースを集約する`() = runSuspend {
     val program = program(maxArticlesPerEpisode = 3)
     val repository = FakePodcastRepository(program)
     val now = 5L * 24 * 60 * 60 * 1_000
@@ -368,8 +368,11 @@ class PodcastTest {
     val generated = useCase.generate(program.id) as PodcastGenerationResult.Generated
 
     assertEquals(listOf("new-a", "new-b"), generated.episode.articles.map { it.articleId })
-    assertEquals(1, eventCalls) // Event classification reused, not requested twice.
+    assertEquals(1, eventCalls) // Both partitions reuse the successful classification.
     assertEquals(2, generator.prompts.size)
+    val repeated = repository.episodes.single { it.status == PodcastEpisodeStatus.QUEUED }
+    assertEquals(listOf("repeated"), repeated.articles.map { it.articleId })
+    assertTrue(repeated.title.contains("既報ニュース"))
     assertEquals(PodcastClusteringStatus.SUCCESS, generated.episode.clusteringStatus)
     assertEquals(PodcastEpisodeStatus.ARCHIVED, repository.episodes.first().status)
     assertEquals(listOf("old"), repository.episodes.first().articles.map { it.articleId })
@@ -414,9 +417,86 @@ class PodcastTest {
 
     assertEquals(listOf("new-a", "new-a-another-source"), first.episode.articles.map { it.articleId })
     assertEquals(listOf(0, 0), first.episode.articles.map { it.chapterPosition })
-    val remaining = repository.episodes.single { it.status == PodcastEpisodeStatus.QUEUED }
-    assertEquals(listOf("new-b"), remaining.articles.map { it.articleId })
-    assertEquals(0, remaining.articles.single().chapterPosition)
+    val queued = repository.episodes.filter { it.status == PodcastEpisodeStatus.QUEUED }
+    assertEquals(listOf("new-b", "covered"), queued.flatMap { it.articles.map(PodcastEpisodeArticle::articleId) })
+    assertEquals(listOf(false, true), queued.map { it.title.contains("既報ニュース") })
+    assertEquals(listOf(0, 0), queued.map { it.articles.single().chapterPosition })
+  }
+
+
+  @Test
+  fun `50件のニュースを通常30件と10件および既報10件へ分割する`() = runSuspend {
+    val program = program(maxArticlesPerEpisode = 30)
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "過去のニュース",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = listOf(entry("old").toEpisodeArticle()),
+    )
+    val articles = (0 until 40).map { entry("fresh-$it") } +
+      (0 until 10).map { entry("repeat-$it") }
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        val oldIndex = candidates.indexOfFirst { it.articleId == "old" }
+        val repeated = candidates.indices.filter { candidates[it].articleId.startsWith("repeat-") }
+        val matched = if (oldIndex >= 0) listOf(oldIndex) + repeated else emptyList()
+        val groups = candidates.indices.filterNot { it in matched }.map { listOf(it) } +
+          if (matched.isNotEmpty()) listOf(matched) else emptyList()
+        return PodcastNewsClusteringResult(groups, PodcastClusteringStatus.SUCCESS)
+      }
+    }
+    val useCase = GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(articles), RecordingGenerator("原稿"),
+      nowEpochMillis = { now }, newsClusterer = clusterer,
+    )
+    val first = useCase.generate(program.id) as PodcastGenerationResult.Generated
+    assertEquals(30, first.episode.chapterGroups().size)
+    val reserved = repository.episodes.filter { it.id != "archive" }
+    assertEquals(listOf(30, 10, 10), reserved.map { it.articles.size })
+    assertEquals(
+      listOf(PodcastEpisodeStatus.READY, PodcastEpisodeStatus.QUEUED, PodcastEpisodeStatus.QUEUED),
+      reserved.map { it.status },
+    )
+    assertEquals(listOf(false, false, true), reserved.map { it.title.contains("既報ニュース") })
+    assertEquals(50, reserved.flatMap { it.articles }.map { it.articleId }.toSet().size)
+
+    useCase.generate(program.id)
+    val repeated = requireNotNull(repository.episodes.lastOrNull())
+    assertEquals(PodcastEpisodeStatus.QUEUED, repeated.status)
+    val third = useCase.generate(program.id) as PodcastGenerationResult.Generated
+    assertEquals(PodcastEpisodeStatus.READY, third.episode.status)
+    assertTrue(third.episode.title.contains("既報ニュース"))
+    assertEquals(listOf(10), listOf(third.episode.articles.size))
+  }
+
+  @Test
+  fun `候補がすべて既報でも専用タイトルのエピソードを生成する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "過去のニュース",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = listOf(entry("old").toEpisodeArticle()),
+    )
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult = PodcastNewsClusteringResult(
+        listOf(candidates.indices.toList()), PodcastClusteringStatus.SUCCESS,
+      )
+    }
+    val generated = GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(listOf(entry("repeat"))), RecordingGenerator("原稿"),
+      nowEpochMillis = { now }, newsClusterer = clusterer,
+    ).generate(program.id) as PodcastGenerationResult.Generated
+    assertEquals(listOf("repeat"), generated.episode.articles.map { it.articleId })
+    assertTrue(generated.episode.title.contains("既報ニュース"))
   }
 
   @Test
@@ -517,9 +597,11 @@ class PodcastTest {
     ).generate(program.id) as PodcastGenerationResult.Generated
 
     assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
-    assertEquals(4, requests.size) // Three archive batches, then fresh-event clustering.
+    assertEquals(listOf("repeated"), repository.episodes.single { it.status == PodcastEpisodeStatus.QUEUED }.articles.map { it.articleId })
+    assertEquals(5, requests.size) // Three archive batches, then two independent partitions.
     assertTrue(requests.take(3).all { it.size <= 24 })
-    assertEquals(listOf("new"), requests.last())
+    assertEquals(listOf("new"), requests[3])
+    assertEquals(listOf("repeated"), requests[4])
   }
 
   @Test
