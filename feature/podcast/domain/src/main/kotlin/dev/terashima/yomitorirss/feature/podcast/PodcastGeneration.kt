@@ -85,9 +85,9 @@ class GeneratePodcastEpisodeUseCase(
     }
     if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
     val compared = compareRecentlyCoveredNews(program, exclusion.included)
-    val fresh = compared.entries.takeIf(List<PodcastFeedEntry>::isNotEmpty)
+    val fresh = compared.entries.takeIf { it.isNotEmpty() }
       ?.let { clusterCandidates(program, it, compared.eventClustering) }
-    val repeated = compared.repeatedEntries.takeIf(List<PodcastFeedEntry>::isNotEmpty)
+    val repeated = compared.repeatedEntries.takeIf { it.isNotEmpty() }
       ?.let { clusterCandidates(program, it, compared.repeatedEventClustering) }
     val reserved = repository.reserveEpisode(
       program = program,
