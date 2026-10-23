@@ -341,7 +341,7 @@ class SqlitePodcastRepository(
         val status = if (episodeIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
         val episodeCreatedAt = createdAtEpochMillis + episodeIndex
         val episodeTitle = buildEpisodeTitle(program.name, episodeCreatedAt) +
-          if (previouslyCovered) "（既報ニュース）" else ""
+          (if (previouslyCovered) "（既報ニュース）" else "")
         insertOrThrow(
           "podcast_episodes",
           null,
@@ -355,7 +355,7 @@ class SqlitePodcastRepository(
             if (partitionStatus == null) putNull("clustering_status") else put("clustering_status", partitionStatus.name)
           },
         )
-  
+
         val episodeArticles = mutableListOf<PodcastEpisodeArticle>()
         var articlePosition = 0
         selectedClusters.forEachIndexed { chapterPosition, cluster ->
