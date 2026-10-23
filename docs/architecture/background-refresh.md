@@ -52,7 +52,7 @@ RSS-owned `RefreshFeedsUseCase` reads RSS-owned timing preferences on each batch
 
 `DefaultFeedRepository` performs the fresh state check while holding a per-feed coroutine mutex. It re-reads the persisted feed after acquiring the lock and coalesces simultaneous refresh attempts, including direct callers such as widgets and other feed consumers. Successful responses (including HTTP 304) update `last_fetched_at` and reset failure suppression. Transient failure timestamps are process-local; a process restart may permit an immediate retry. The in-flight feed ID StateFlow lets independent RSS screen view models display shared refresh activity.
 
-Imported subscriptions without a fetched response retain `last_fetched_at = null` so that first-time synchronization is not mistaken for a recent successful download. RSS-owned feeds and Web-scraping rule tables store nullable per-source overrides, with version 42 -> 43 migration. The existing Worker identity remains unchanged.
+Imported subscriptions without a fetched response retain `last_fetched_at = null` so that first-time synchronization is not mistaken for a recent successful download. RSS-owned feeds and Web-scraping rule tables store nullable per-source overrides, with version 42 -> 43 migration. The existing Worker identity remains unchanged. Widget auto refresh uses the same RSS policy; an explicit widget refresh action bypasses the interval.
 
 
 

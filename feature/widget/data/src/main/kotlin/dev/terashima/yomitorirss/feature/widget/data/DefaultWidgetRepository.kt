@@ -17,6 +17,8 @@ class DefaultWidgetRepository(
   private val bookmarkRepository: BookmarkRepository,
   private val sourceSelector: (String) -> Boolean = { true },
   private val onReadLaterSaved: ((Article) -> Unit)? = null,
+  private val automaticIntervalMinutes: () -> Long = { 60L },
+  private val failureRetryIntervalMinutes: () -> Long = { 5L },
 ) : WidgetRepository {
   override fun listUnreadArticles(): List<WidgetArticle> = runBlocking {
     articleRepository.listUnreadArticles()
@@ -59,11 +61,16 @@ class DefaultWidgetRepository(
     )
   }
 
-  override suspend fun refreshFeeds() {
+  override suspend fun refreshFeeds(force: Boolean) {
+    val minimumAgeMillis = automaticIntervalMinutes() * 60_000L
+    val failureRetryMillis = failureRetryIntervalMinutes() * 60_000L
     feedRepository.listFeeds()
       .filter { sourceSelector(it.feedUrl) }
       .forEach { feed ->
-        runCatching { feedRepository.refreshFeed(feed) }
+        runCatching {
+          if (force) feedRepository.refreshFeed(feed)
+          else feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
+        }
       }
   }
 }

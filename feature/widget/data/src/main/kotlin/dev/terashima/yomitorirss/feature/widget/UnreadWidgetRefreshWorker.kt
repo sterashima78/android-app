@@ -14,7 +14,7 @@ class UnreadWidgetRefreshWorker(
   override suspend fun doWork(): Result {
     if (!isBackgroundDataFetchAllowed(applicationContext)) return Result.retry()
     return try {
-      repository.refreshFeeds()
+      repository.refreshFeeds(force = inputData.getBoolean("force_refresh", false))
       onRefreshComplete(applicationContext)
       Result.success()
     } catch (_: Throwable) {

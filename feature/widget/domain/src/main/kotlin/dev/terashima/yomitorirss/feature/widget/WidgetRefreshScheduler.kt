@@ -1,7 +1,7 @@
 package dev.terashima.yomitorirss.feature.widget
 
 interface WidgetRefreshScheduler {
-  fun enqueue()
+  fun enqueue(force: Boolean = false)
 }
 
 /** Narrow framework boundary used by Android-created widget entry points. */

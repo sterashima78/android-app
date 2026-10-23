@@ -11,7 +11,7 @@ interface WidgetRepository {
   fun listUnreadArticles(): List<WidgetArticle>
   suspend fun markRead(articleId: String)
   suspend fun markReadLater(articleId: String)
-  suspend fun refreshFeeds()
+  suspend fun refreshFeeds(force: Boolean = false)
 }
 
 interface WidgetRepositoryProvider {
