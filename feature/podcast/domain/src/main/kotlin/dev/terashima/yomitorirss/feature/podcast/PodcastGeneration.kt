@@ -34,7 +34,9 @@ private data class PodcastClusteredCandidates(
 
 private data class PodcastArchiveComparison(
   val entries: List<PodcastFeedEntry>,
+  val repeatedEntries: List<PodcastFeedEntry> = emptyList(),
   val eventClustering: PodcastNewsClusteringResult? = null,
+  val repeatedEventClustering: PodcastNewsClusteringResult? = null,
 )
 
 class GeneratePodcastEpisodeUseCase(
@@ -82,14 +84,18 @@ class GeneratePodcastEpisodeUseCase(
       repository.recordExcludedEntries(program.id, exclusion.excluded, nowEpochMillis())
     }
     if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
-    val fresh = filterRecentlyCoveredNews(program, exclusion.included)
-    if (fresh.entries.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
-    val clustered = clusterCandidates(program, fresh.entries, fresh.eventClustering)
+    val compared = compareRecentlyCoveredNews(program, exclusion.included)
+    val fresh = compared.entries.takeIf(List<PodcastFeedEntry>::isNotEmpty)
+      ?.let { clusterCandidates(program, it, compared.eventClustering) }
+    val repeated = compared.repeatedEntries.takeIf(List<PodcastFeedEntry>::isNotEmpty)
+      ?.let { clusterCandidates(program, it, compared.repeatedEventClustering) }
     val reserved = repository.reserveEpisode(
       program = program,
-      candidates = clustered.entries,
+      candidates = fresh?.entries.orEmpty(),
       createdAtEpochMillis = nowEpochMillis(),
-      clusteringStatus = clustered.status,
+      clusteringStatus = fresh?.status,
+      repeatedCandidates = repeated?.entries.orEmpty(),
+      repeatedClusteringStatus = repeated?.status,
     ) ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
     generateReserved(program, reserved, onProgress)
   }
@@ -179,8 +185,8 @@ class GeneratePodcastEpisodeUseCase(
     }
   }
 
-  /** Compare past archived coverage using event identity, never broad topical similarity. */
-  private suspend fun filterRecentlyCoveredNews(
+  /** Separate past archived coverage using event identity, never broad topical similarity. */
+  private suspend fun compareRecentlyCoveredNews(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
   ): PodcastArchiveComparison {
@@ -212,18 +218,32 @@ class GeneratePodcastEpisodeUseCase(
       return PodcastArchiveComparison(candidates)
     }
 
-    val currentGroups = comparison.groups
+    val newGroups = comparison.groups
       .filter { group -> group.none { it < recentArchive.size } }
       .map { group -> group.map { it - recentArchive.size } }
-    val retainedIndexes = currentGroups.flatten().toSet()
-    val retainedEntries = candidates.filterIndexed { index, _ -> index in retainedIndexes }
-    val newIndexes = candidates.indices.filter { it in retainedIndexes }
-      .withIndex().associate { (newIndex, oldIndex) -> oldIndex to newIndex }
-    val remapped = PodcastNewsClusteringResult(
-      groups = currentGroups.map { group -> group.map { requireNotNull(newIndexes[it]) } },
-      status = comparison.status,
+    val repeatedGroups = comparison.groups
+      .filter { group -> group.any { it < recentArchive.size } }
+      .map { group -> group.filter { it >= recentArchive.size }.map { it - recentArchive.size } }
+      .filter(List<Int>::isNotEmpty)
+
+    fun remap(groups: List<List<Int>>): Pair<List<PodcastFeedEntry>, PodcastNewsClusteringResult> {
+      val indexes = groups.flatten().toSet()
+      val selected = candidates.filterIndexed { index, _ -> index in indexes }
+      val remappedIndexes = candidates.indices.filter { it in indexes }
+        .withIndex().associate { (newIndex, oldIndex) -> oldIndex to newIndex }
+      return selected to PodcastNewsClusteringResult(
+        groups = groups.map { group -> group.map { requireNotNull(remappedIndexes[it]) } },
+        status = comparison.status,
+      )
+    }
+    val (newEntries, newClustering) = remap(newGroups)
+    val (repeatedEntries, repeatedClustering) = remap(repeatedGroups)
+    return PodcastArchiveComparison(
+      entries = newEntries,
+      repeatedEntries = repeatedEntries,
+      eventClustering = newClustering,
+      repeatedEventClustering = repeatedClustering,
     )
-    return PodcastArchiveComparison(retainedEntries, remapped)
   }
 
   private suspend fun compareRecentArchiveInBatches(
@@ -266,8 +286,11 @@ class GeneratePodcastEpisodeUseCase(
           }
       }
     }
-    // Batch partitions cannot be reused as a global partition; cluster fresh entries again.
-    return PodcastArchiveComparison(candidates.filterIndexed { index, _ -> index !in covered })
+    // Batch partitions cannot be reused as a global partition; cluster both segments again.
+    return PodcastArchiveComparison(
+      entries = candidates.filterIndexed { index, _ -> index !in covered },
+      repeatedEntries = candidates.filterIndexed { index, _ -> index in covered },
+    )
   }
 
   private suspend fun clusterCandidates(
@@ -375,7 +398,10 @@ class GeneratePodcastEpisodeUseCase(
 
       val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
       val script = buildPodcastEpisodeScriptFromChapters(program.name, episode.chapterGroups())
-      val title = buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
+      // Newly reserved episodes already carry their durable display title.
+      // Legacy pending episodes still store only the program name.
+      val title = initialEpisode.title.takeUnless { it == program.name }
+        ?: buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
       PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
     } catch (error: CancellationException) {
       throw error
