@@ -224,7 +224,7 @@ class GeneratePodcastEpisodeUseCase(
     val repeatedGroups = comparison.groups
       .filter { group -> group.any { it < recentArchive.size } }
       .map { group -> group.filter { it >= recentArchive.size }.map { it - recentArchive.size } }
-      .filter(List<Int>::isNotEmpty)
+      .filter { it.isNotEmpty() }
 
     fun remap(groups: List<List<Int>>): Pair<List<PodcastFeedEntry>, PodcastNewsClusteringResult> {
       val indexes = groups.flatten().toSet()
