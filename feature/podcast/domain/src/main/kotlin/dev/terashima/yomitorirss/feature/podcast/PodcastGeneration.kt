@@ -398,10 +398,12 @@ class GeneratePodcastEpisodeUseCase(
 
       val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
       val script = buildPodcastEpisodeScriptFromChapters(program.name, episode.chapterGroups())
-      // Newly reserved episodes already carry their durable display title.
-      // Legacy pending episodes still store only the program name.
-      val title = initialEpisode.title.takeUnless { it == program.name }
-        ?: buildEpisodeTitle(program.name, episode.createdAtEpochMillis)
+      // Preserve the episode's archive-comparison classification across retries
+      // and rebuilds, while refreshing the title when the program is renamed.
+      val title = buildEpisodeTitle(program.name, episode.createdAtEpochMillis) +
+        (if (initialEpisode.title.endsWith(PODCAST_PREVIOUSLY_COVERED_TITLE_SUFFIX)) {
+          PODCAST_PREVIOUSLY_COVERED_TITLE_SUFFIX
+        } else "")
       PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
     } catch (error: CancellationException) {
       throw error
