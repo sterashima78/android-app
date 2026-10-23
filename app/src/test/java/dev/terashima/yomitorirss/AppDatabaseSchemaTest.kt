@@ -156,7 +156,7 @@ class AppDatabaseSchemaTest {
       )
       db.execSQL(
         "INSERT INTO rss_web_scraping_rules(id, url_pattern, function_code, timeout_seconds, updated_at) " +
-          "VALUES('rule-1', 'https://example.invalid/*', 'async () => ({ title: \'sample\', items: [] })', 15, 1)",
+          "VALUES('rule-1', 'https://example.invalid/*', 'async () => ({ items: [] })', 15, 1)",
       )
       db.version = 42
     }
