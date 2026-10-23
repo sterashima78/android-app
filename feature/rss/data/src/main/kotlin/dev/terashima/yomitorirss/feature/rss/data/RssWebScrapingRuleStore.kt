@@ -8,6 +8,7 @@ import dev.terashima.yomitorirss.feature.rss.DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SE
 import dev.terashima.yomitorirss.feature.rss.MAX_RSS_WEB_SCRAPING_TIMEOUT_SECONDS
 import dev.terashima.yomitorirss.feature.rss.MIN_RSS_WEB_SCRAPING_TIMEOUT_SECONDS
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
+import dev.terashima.yomitorirss.feature.rss.requireRssRefreshInterval
 import java.net.URI
 import java.util.UUID
 
@@ -17,7 +18,7 @@ internal class RssWebScrapingRuleStore(
   fun list(): List<RssWebScrapingRule> {
     ensureRssWebScrapingRuleSchema(database.writable)
     return database.readable.rawQuery(
-      "SELECT id, url_pattern, function_code, timeout_seconds, updated_at " +
+      "SELECT id, url_pattern, function_code, timeout_seconds, updated_at, refresh_interval_minutes " +
         "FROM rss_web_scraping_rules ORDER BY updated_at DESC, id",
       emptyArray<String>(),
     ).use { cursor ->
@@ -32,11 +33,13 @@ internal class RssWebScrapingRuleStore(
     urlPattern: String,
     functionCode: String,
     timeoutSeconds: Int,
+    refreshIntervalMinutes: Long?,
   ): RssWebScrapingRule {
     ensureRssWebScrapingRuleSchema(database.writable)
     val normalizedPattern = urlPattern.trim()
     val normalizedFunction = functionCode.trim()
     validateRssWebScrapingRule(normalizedPattern, normalizedFunction, timeoutSeconds)
+    requireRssRefreshInterval(refreshIntervalMinutes)
     val existingId = id?.trim()?.takeIf(String::isNotEmpty)
     val ruleId = existingId ?: UUID.randomUUID().toString()
     val updatedAt = System.currentTimeMillis()
@@ -54,6 +57,8 @@ internal class RssWebScrapingRuleStore(
         put("url_pattern", normalizedPattern)
         put("function_code", normalizedFunction)
         put("timeout_seconds", timeoutSeconds)
+        if (refreshIntervalMinutes == null) putNull("refresh_interval_minutes")
+        else put("refresh_interval_minutes", refreshIntervalMinutes)
         put("updated_at", updatedAt)
       }
       if (existingId == null) {
@@ -70,6 +75,7 @@ internal class RssWebScrapingRuleStore(
       functionCode = normalizedFunction,
       timeoutSeconds = timeoutSeconds,
       updatedAt = updatedAt,
+      refreshIntervalMinutes = refreshIntervalMinutes,
     )
   }
 
@@ -87,7 +93,8 @@ internal fun ensureRssWebScrapingRuleSchema(db: SQLiteDatabase) {
         url_pattern TEXT NOT NULL UNIQUE,
         function_code TEXT NOT NULL,
         timeout_seconds INTEGER NOT NULL DEFAULT $DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        refresh_interval_minutes INTEGER
       )
     """.trimIndent(),
   )
@@ -167,6 +174,9 @@ private fun Cursor.rssWebScrapingRule(): RssWebScrapingRule = RssWebScrapingRule
   functionCode = getString(getColumnIndexOrThrow("function_code")),
   timeoutSeconds = getInt(getColumnIndexOrThrow("timeout_seconds")),
   updatedAt = getLong(getColumnIndexOrThrow("updated_at")),
+  refreshIntervalMinutes = getColumnIndexOrThrow("refresh_interval_minutes").let { index ->
+    if (isNull(index)) null else getLong(index)
+  },
 )
 
 private const val MAX_URL_PATTERN_LENGTH = 2_048

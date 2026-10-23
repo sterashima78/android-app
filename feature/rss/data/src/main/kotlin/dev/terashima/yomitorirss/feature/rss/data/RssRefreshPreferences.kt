@@ -2,6 +2,7 @@ package dev.terashima.yomitorirss.feature.rss.data
 
 import android.content.Context
 import dev.terashima.yomitorirss.feature.rss.FeedRefreshIntervals
+import dev.terashima.yomitorirss.feature.rss.RSS_REFRESH_INTERVAL_OPTIONS
 
 /** RSS-owned user preferences for automatic feed refresh. */
 class RssRefreshPreferences(context: Context) {
@@ -29,7 +30,7 @@ class RssRefreshPreferences(context: Context) {
   )
 
   companion object {
-    val SCREEN_INTERVAL_OPTIONS = listOf(5L, 15L, 30L, 60L, 180L, 360L)
+    val SCREEN_INTERVAL_OPTIONS = RSS_REFRESH_INTERVAL_OPTIONS
     val FAILURE_INTERVAL_OPTIONS = listOf(1L, 5L, 15L, 30L, 60L)
     const val DEFAULT_SCREEN_INTERVAL = 30L
     const val DEFAULT_FAILURE_INTERVAL = 5L

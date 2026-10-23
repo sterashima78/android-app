@@ -18,6 +18,9 @@ interface FeedRepository {
   suspend fun deleteFolder(folderId: String)
   suspend fun moveFeedToFolder(feedId: String, folderId: String?)
   suspend fun setFeedContentType(feedId: String, contentType: ContentType?)
+  suspend fun setFeedRefreshInterval(feedId: String, minutes: Long?) {
+    error("Individual refresh interval is not supported")
+  }
   suspend fun setFolderContentType(folderId: String, contentType: ContentType?)
   suspend fun refreshFeed(feed: Feed)
 
@@ -38,6 +41,7 @@ interface FeedRepository {
     urlPattern: String,
     functionCode: String,
     timeoutSeconds: Int = DEFAULT_RSS_WEB_SCRAPING_TIMEOUT_SECONDS,
+    refreshIntervalMinutes: Long? = null,
   ): RssWebScrapingRule = error("Web スクレイピング取得ルールはこのリポジトリでは利用できません")
 
   fun deleteWebScrapingRule(id: String) {

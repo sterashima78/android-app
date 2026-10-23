@@ -10,6 +10,7 @@ import dev.terashima.yomitorirss.feature.article.SourceContentItem
 import dev.terashima.yomitorirss.feature.article.toContentTypeOrNull
 import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedFolder
+import dev.terashima.yomitorirss.feature.rss.requireRssRefreshInterval
 import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
 import java.time.Instant
 import java.util.UUID
@@ -148,6 +149,19 @@ internal class FeedStore(
     require(updated > 0) { "フィードが見つかりません" }
   }
 
+  fun setFeedRefreshInterval(feedId: String, minutes: Long?) {
+    requireRssRefreshInterval(minutes)
+    val updated = database.write {
+      update(
+        "feeds",
+        contentValues("refresh_interval_minutes" to minutes?.toString()),
+        "id=?",
+        arrayOf(feedId),
+      )
+    }
+    require(updated > 0) { "フィードが見つかりません" }
+  }
+
   fun setFolderContentType(folderId: String, contentType: ContentType?) {
     val updated = database.write {
       update(
@@ -246,6 +260,7 @@ private fun Feed.values(): ContentValues = contentValues(
   "created_at" to createdAt,
   "folder_id" to folderId,
   "content_type" to contentTypeOverride?.name,
+  "refresh_interval_minutes" to refreshIntervalMinutes?.toString(),
 )
 
 private fun FeedFolder.values(): ContentValues = contentValues(
@@ -272,6 +287,7 @@ private fun Cursor.feed(): Feed = Feed(
   createdAt = string("created_at"),
   folderId = nullableString("folder_id"),
   contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
+  refreshIntervalMinutes = nullableLong("refresh_interval_minutes"),
 )
 
 private fun Cursor.feedFolder(): FeedFolder = FeedFolder(
@@ -282,6 +298,8 @@ private fun Cursor.feedFolder(): FeedFolder = FeedFolder(
   contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
 )
 
+private fun Cursor.nullableLong(name: String): Long? =
+  getColumnIndexOrThrow(name).let { index -> if (isNull(index)) null else getLong(index) }
 private fun Cursor.string(name: String): String = getString(getColumnIndexOrThrow(name))
 private fun Cursor.nullableString(name: String): String? =
   getColumnIndexOrThrow(name).let { index -> if (isNull(index)) null else getString(index) }

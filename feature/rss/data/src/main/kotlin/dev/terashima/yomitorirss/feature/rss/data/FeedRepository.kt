@@ -14,6 +14,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedRefreshContext
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingPreview
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
+import dev.terashima.yomitorirss.feature.rss.requireRssRefreshInterval
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
 import dev.terashima.yomitorirss.feature.rss.data.network.WebScrapingFeedClient
 import java.time.Instant
@@ -113,6 +114,11 @@ class DefaultFeedRepository(
     dataChanges.notifyChanged()
   }
 
+  override suspend fun setFeedRefreshInterval(feedId: String, minutes: Long?) {
+    store.setFeedRefreshInterval(feedId, minutes)
+    dataChanges.notifyChanged()
+  }
+
   override suspend fun setFolderContentType(folderId: String, contentType: ContentType?) {
     store.setFolderContentType(folderId, contentType)
     dataChanges.notifyChanged()
@@ -142,11 +148,15 @@ class DefaultFeedRepository(
       // Never trust the caller's snapshot: a different route may have refreshed the feed.
       val current = store.listFeeds().firstOrNull { it.id == feed.id } ?: return@withLock false
       val now = System.currentTimeMillis()
+      val matchingRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), current.feedUrl)
+      val effectiveMinimumAgeMillis = rssEffectiveMinimumAgeMillis(
+        minimumAgeMillis, current.refreshIntervalMinutes, matchingRule?.refreshIntervalMinutes,
+      )
       val lastSuccess = current.lastFetchedAt?.let { timestamp ->
         runCatching { Instant.parse(timestamp).toEpochMilli() }.getOrNull()
       }
-      if (minimumAgeMillis > 0 && lastSuccess != null &&
-        now - lastSuccess >= 0 && now - lastSuccess < minimumAgeMillis
+      if (effectiveMinimumAgeMillis > 0 && lastSuccess != null &&
+        now - lastSuccess >= 0 && now - lastSuccess < effectiveMinimumAgeMillis
       ) {
         return@withLock false
       }
@@ -159,9 +169,8 @@ class DefaultFeedRepository(
 
       _refreshingFeedIds.update { it + feed.id }
       try {
-        val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), current.feedUrl)
-        val result = if (customRule != null) {
-          requireWebScrapingClient().fetchFeed(current.feedUrl, customRule)
+        val result = if (matchingRule != null) {
+          requireWebScrapingClient().fetchFeed(current.feedUrl, matchingRule)
         } else {
           client.fetchFeed(
             current.feedUrl,
@@ -204,7 +213,8 @@ class DefaultFeedRepository(
     urlPattern: String,
     functionCode: String,
     timeoutSeconds: Int,
-  ): RssWebScrapingRule = webScrapingRules.save(id, urlPattern, functionCode, timeoutSeconds).also {
+    refreshIntervalMinutes: Long?,
+  ): RssWebScrapingRule = webScrapingRules.save(id, urlPattern, functionCode, timeoutSeconds, refreshIntervalMinutes).also {
     dataChanges.notifyChanged()
   }
 
