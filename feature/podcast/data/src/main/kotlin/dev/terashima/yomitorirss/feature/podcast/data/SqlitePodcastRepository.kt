@@ -20,6 +20,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
+import dev.terashima.yomitorirss.feature.podcast.buildEpisodeTitle
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -305,35 +306,53 @@ class SqlitePodcastRepository(
     candidates: List<PodcastFeedEntry>,
     createdAtEpochMillis: Long,
     clusteringStatus: PodcastClusteringStatus?,
+  ): PodcastEpisode? = reserveEpisode(
+    program, candidates, createdAtEpochMillis, clusteringStatus, emptyList(), null,
+  )
+
+  override suspend fun reserveEpisode(
+    program: PodcastProgram,
+    candidates: List<PodcastFeedEntry>,
+    createdAtEpochMillis: Long,
+    clusteringStatus: PodcastClusteringStatus?,
+    repeatedCandidates: List<PodcastFeedEntry>,
+    repeatedClusteringStatus: PodcastClusteringStatus?,
   ): PodcastEpisode? = database.transaction {
-    val pendingCandidates = candidates
-      .distinctBy(PodcastFeedEntry::articleId)
-      .filterNot { candidate -> isProcessed(this, program.id, candidate.articleId) }
-    if (pendingCandidates.isEmpty()) return@transaction null
-
-    val clusteredCandidates = pendingCandidates
-      .mapIndexed { index, candidate -> (candidate.chapterPosition ?: index) to candidate }
-      .groupBy({ it.first }, { it.second })
-      .toSortedMap()
-      .values
-      .toList()
-
+    val seenIds = mutableSetOf<String>()
+    val partitions = listOf(
+      Triple(candidates, clusteringStatus, false),
+      Triple(repeatedCandidates, repeatedClusteringStatus, true),
+    )
     var firstEpisode: PodcastEpisode? = null
-    clusteredCandidates.chunked(program.maxArticlesPerEpisode).forEachIndexed { chunkIndex, selectedClusters ->
+    var episodeIndex = 0
+    for ((entries, partitionStatus, previouslyCovered) in partitions) {
+      val pendingCandidates = entries
+        .filter { candidate -> seenIds.add(candidate.articleId) }
+        .filterNot { candidate -> isProcessed(this, program.id, candidate.articleId) }
+      val clusteredCandidates = pendingCandidates
+        .mapIndexed { index, candidate -> (candidate.chapterPosition ?: index) to candidate }
+        .groupBy({ it.first }, { it.second })
+        .toSortedMap()
+        .values
+        .toList()
+
+      for (selectedClusters in clusteredCandidates.chunked(program.maxArticlesPerEpisode)) {
       val episodeId = UUID.randomUUID().toString()
-      val status = if (chunkIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
-      val episodeCreatedAt = createdAtEpochMillis + chunkIndex
+      val status = if (episodeIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
+      val episodeCreatedAt = createdAtEpochMillis + episodeIndex
+      val episodeTitle = buildEpisodeTitle(program.name, episodeCreatedAt) +
+        if (previouslyCovered) "（既報ニュース）" else ""
       insertOrThrow(
         "podcast_episodes",
         null,
         ContentValues().apply {
           put("id", episodeId)
           put("program_id", program.id)
-          put("title", program.name)
+          put("title", episodeTitle)
           put("created_at", episodeCreatedAt)
           put("status", status.name)
           put("clustering_mode", program.clusteringMode.name)
-          if (clusteringStatus == null) putNull("clustering_status") else put("clustering_status", clusteringStatus.name)
+          if (partitionStatus == null) putNull("clustering_status") else put("clustering_status", partitionStatus.name)
         },
       )
 
@@ -376,14 +395,16 @@ class SqlitePodcastRepository(
       val episode = PodcastEpisode(
         id = episodeId,
         programId = program.id,
-        title = program.name,
+        title = episodeTitle,
         createdAtEpochMillis = episodeCreatedAt,
         status = status,
         articles = episodeArticles,
-        clusteringStatus = clusteringStatus,
+        clusteringStatus = partitionStatus,
         clusteringMode = program.clusteringMode,
       )
       if (firstEpisode == null) firstEpisode = episode
+      episodeIndex += 1
+      }
     }
     firstEpisode
   }
