@@ -36,3 +36,11 @@ RSS source adapter はタイトル一致による事前除去をせず、異な�
 ## Relations
 
 - Refines: ADR-0259, ADR-0282
+
+## 2026-10-23 refinement: separate previously covered episodes
+
+Archive comparison no longer removes matched incoming articles from generation. A valid comparison partitions incoming articles into new and previously covered groups. New groups are reserved first up to the existing per-episode chapter limit, followed by previously covered groups in their own episodes. Each previously covered episode has a distinct visible title marked `既報ニュース`; the title is stored at reservation, so queued generation and interruption recovery retain the distinction without introducing schema or a new provider.
+
+The bounded comparison budget and fail-open policy remain unchanged: uncertain matches stay in ordinary new episodes. Previously covered articles are consumed on reservation just like new ones; archive reference articles are never copied into new episode snapshots. Each segment is clustered independently using the selected mode, and the same chapter/episode checkpoint and queue lifecycle applies. The category ordering and maximum number of news clusters per episode remain unchanged.
+
+Existing archived episodes, chapter snapshots, rebuilds, and comparison episodes are not repartitioned retroactively. The previous discard policy described above is superseded by this refinement.

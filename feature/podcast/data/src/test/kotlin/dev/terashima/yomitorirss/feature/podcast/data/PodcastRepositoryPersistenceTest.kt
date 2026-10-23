@@ -327,6 +327,57 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
+  fun `通常ニュースの後に既報だけのエピソードを予約し再開してもタイトルを保持する`() = runSuspend {
+    val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
+    val program = PodcastProgram(
+      id = "program-1", name = "朝のニュース", sourceIds = setOf(source.id),
+      provider = PodcastGenerationProvider.LOCAL, maxArticlesPerEpisode = 2,
+    )
+    repository.saveSource(source)
+    repository.saveProgram(program)
+    fun article(id: String, chapter: Int) = PodcastFeedEntry(
+      articleId = id, feedId = source.id, title = "記事 $id",
+      sourceTitle = source.name, publishedAtEpochMillis = 10L,
+      articleUrl = null, feedContent = "本文 $id", chapterPosition = chapter,
+    )
+    val first = requireNotNull(repository.reserveEpisode(
+      program = program,
+      candidates = listOf(article("fresh-1", 0), article("fresh-2", 1), article("fresh-3", 2)),
+      createdAtEpochMillis = 1_000L,
+      clusteringStatus = PodcastClusteringStatus.SUCCESS,
+      repeatedCandidates = listOf(article("repeat-1", 0), article("repeat-2", 1)),
+      repeatedClusteringStatus = PodcastClusteringStatus.SUCCESS,
+    ))
+    assertEquals(listOf("fresh-1", "fresh-2"), first.articles.map { it.articleId })
+    val snapshots = repository.listEpisodes(program.id).sortedBy { it.createdAtEpochMillis }
+    assertEquals(listOf(2, 1, 2), snapshots.map { it.articles.size })
+    assertEquals(
+      listOf(PodcastEpisodeStatus.GENERATING, PodcastEpisodeStatus.QUEUED, PodcastEpisodeStatus.QUEUED),
+      snapshots.map { it.status },
+    )
+    assertEquals(listOf(false, false, true), snapshots.map { it.title.contains("既報ニュース") })
+    assertEquals(listOf(0, 1), snapshots[2].articles.map { it.chapterPosition })
+    assertEquals(PodcastClusteringStatus.SUCCESS, snapshots[2].clusteringStatus)
+    assertEquals(5, snapshots.flatMap { it.articles }.map { it.articleId }.toSet().size)
+
+    val filtered = SqlitePodcastCandidateFilter(DatabaseConnection(database))
+    assertTrue(filtered.availableEntries(program.id, listOf(article("repeat-1", 0))).isEmpty())
+    assertNull(repository.reserveEpisode(program, emptyList(), 2_000L, null, listOf(article("repeat-1", 0)), null))
+
+    repository.completeChapter(first.id, 0, "原稿1")
+    repository.completeChapter(first.id, 1, "原稿2")
+    repository.completeEpisode(first.id, first.title, "完成原稿")
+    val second = requireNotNull(repository.claimPendingEpisode(program.id))
+    assertEquals(listOf("fresh-3"), second.articles.map { it.articleId })
+    repository.completeChapter(second.id, 0, "原稿")
+    repository.completeEpisode(second.id, second.title, "完成原稿")
+    val repeated = requireNotNull(repository.claimPendingEpisode(program.id))
+    assertEquals(listOf("repeat-1", "repeat-2"), repeated.articles.map { it.articleId })
+    assertTrue(repeated.title.contains("既報ニュース"))
+    assertEquals(repeated.title, repository.findEpisode(repeated.id)?.title)
+  }
+
+  @Test
   fun `チャプターcheckpointとAIタスク進捗を永続化する`() = runSuspend {
     val source = PodcastSource("source-1", "ニュース", "https://example.invalid/feed.xml")
     repository.saveSource(source)
