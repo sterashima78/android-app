@@ -102,7 +102,7 @@ internal fun stripRepeatedSpokenTitle(speech: String, spokenTitle: String?): Str
 }
 
 
-internal fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
+fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
   "$programName / ${EPISODE_TITLE_FORMATTER.format(Instant.ofEpochMilli(createdAtEpochMillis).atZone(ZoneId.systemDefault()))}"
 
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
