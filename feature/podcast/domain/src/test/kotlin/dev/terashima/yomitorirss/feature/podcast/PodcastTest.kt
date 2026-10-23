@@ -423,7 +423,6 @@ class PodcastTest {
     assertEquals(listOf(0, 0), queued.map { it.articles.single().chapterPosition })
   }
 
-
   @Test
   fun `50件のニュースを通常30件と10件および既報10件へ分割する`() = runSuspend {
     val program = program(maxArticlesPerEpisode = 30)
@@ -470,7 +469,7 @@ class PodcastTest {
     val third = useCase.generate(program.id) as PodcastGenerationResult.Generated
     assertEquals(PodcastEpisodeStatus.READY, third.episode.status)
     assertTrue(third.episode.title.contains("既報ニュース"))
-    assertEquals(listOf(10), listOf(third.episode.articles.size))
+    assertEquals(10, third.episode.articles.size)
   }
 
   @Test
