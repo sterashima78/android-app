@@ -82,7 +82,12 @@ internal fun RssWebScrapingRulesUi(
           if (minutes != null) onScreenRefreshIntervalChange(minutes)
         }
         Text("取得失敗後の再試行", style = MaterialTheme.typography.titleSmall)
-        RssRefreshIntervalPicker(failureRetryIntervalMinutes, "", false) { minutes ->
+        RssRefreshIntervalPicker(
+          selectedMinutes = failureRetryIntervalMinutes,
+          inheritedLabel = "",
+          allowInheritance = false,
+          options = listOf(1L, 5L, 15L, 30L, 60L),
+        ) { minutes ->
           if (minutes != null) onFailureRetryIntervalChange(minutes)
         }
       }

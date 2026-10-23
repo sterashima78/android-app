@@ -17,6 +17,7 @@ internal fun RssRefreshIntervalPicker(
   selectedMinutes: Long?,
   inheritedLabel: String,
   allowInheritance: Boolean,
+  options: List<Long> = RSS_REFRESH_INTERVAL_OPTIONS,
   onSelect: (Long?) -> Unit,
 ) {
   var expanded by remember { mutableStateOf(false) }
@@ -31,7 +32,7 @@ internal fun RssRefreshIntervalPicker(
           onSelect(null)
         })
       }
-      RSS_REFRESH_INTERVAL_OPTIONS.forEach { minutes ->
+      options.forEach { minutes ->
         DropdownMenuItem(text = { Text(rssRefreshIntervalLabel(minutes)) }, onClick = {
           expanded = false
           onSelect(minutes)

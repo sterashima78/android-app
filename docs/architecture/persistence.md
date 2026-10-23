@@ -32,7 +32,7 @@ Single physical SQLite database
 - owner data module が lazy/idempotent に schema を確認する必要がある場合、feature の schema contribution と同じ明示的 initializer を呼ぶ。Repository の read method や `snapshot()` の副作用を schema initialization contract にしない。
 - 同一 table の `CREATE TABLE` 定義を Repository と schema contribution に複製しない。
 
-現在の application database version は 42 であり、更新互換性baselineはversion 41である。Podcastのversion 41 -> 42 migrationは、現行生成経路で使用しない `regeneration_status` columnを削除する。version 38 -> 41 へ収束するためだけの一度限りmigrationはcurrent runtimeから退役済みである。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
+現在の application database version は 43 であり、更新互換性baselineはversion 42である。RSSのversion 42 -> 43 migrationは `feeds` と `rss_web_scraping_rules` にnullableな `refresh_interval_minutes` を追加する。Podcastのversion 41 -> 42 migrationは、現行生成経路で使用しない `regeneration_status` columnを削除する。version 38 -> 41 へ収束するためだけの一度限りmigrationはcurrent runtimeから退役済みである。ADR-0241のWeb再生Cookie共有opt-inのようなidempotent additive schema refinementはfresh schemaとowner initializerで現行形を保証する。
 
 バックアップは現在の application schema と同じ database version の snapshot のみを復元対象とする。古い schema version の snapshot は復元処理へ進む前に拒否する。Podcast-owned sourceや記事・cluster snapshot、chapter checkpoint、分類診断状態を含むdurable stateも通常のdatabase snapshot backupに含まれる。更新後に生成した通常の自動・手動backupをcurrent restore baselineとする。
 
@@ -83,7 +83,7 @@ ADR-0099 が backup archive に含める SharedPreferences は `BackupPreference
 
 RSS Context の fresh DB schema は `RssDatabaseSchema.kt` を正本とし、`feeds` / `feed_folders` に加えて Web ページから synthetic feed を生成する user-defined rule を `rss_web_scraping_rules` に保存する。
 
-`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時を保持する RSS-owned durable user data である。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
+`rss_web_scraping_rules` は URL glob pattern、Promise を返す JavaScript function code、WebView pipeline の timeout 秒数、更新日時、任意の自動取得間隔を保持する RSS-owned durable user data である。`feeds` の自動取得間隔設定はルール側の設定より優先し、どちらもnullの場合は共通の取得間隔を使用する。function code と実利用中の URL pattern は repository source や fixture に転記せず通常の database snapshot backup に含め、アクセスは RSS-owned `FeedRepository` capability を経由する。fresh DB と既存 DB の双方で RSS の idempotent schema initializer が同じ table 定義を確保する。この additive table 追加だけを理由とした database version bump は行わない。
 
 RSS記事推薦では同じRSS schema initializerから次のRSS-owned tableを確保する。
 

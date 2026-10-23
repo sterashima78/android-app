@@ -14,7 +14,6 @@ import dev.terashima.yomitorirss.feature.rss.FeedRefreshContext
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingPreview
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
-import dev.terashima.yomitorirss.feature.rss.requireRssRefreshInterval
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
 import dev.terashima.yomitorirss.feature.rss.data.network.WebScrapingFeedClient
 import java.time.Instant
@@ -155,9 +154,7 @@ class DefaultFeedRepository(
       val lastSuccess = current.lastFetchedAt?.let { timestamp ->
         runCatching { Instant.parse(timestamp).toEpochMilli() }.getOrNull()
       }
-      if (effectiveMinimumAgeMillis > 0 && lastSuccess != null &&
-        now - lastSuccess >= 0 && now - lastSuccess < effectiveMinimumAgeMillis
-      ) {
+      if (!rssIsRefreshDue(now, lastSuccess, effectiveMinimumAgeMillis)) {
         return@withLock false
       }
       val lastFailure = lastFailureMillis[feed.id]
