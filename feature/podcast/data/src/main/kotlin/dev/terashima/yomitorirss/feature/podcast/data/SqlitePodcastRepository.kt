@@ -20,6 +20,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastProgram
 import dev.terashima.yomitorirss.feature.podcast.PodcastRepository
 import dev.terashima.yomitorirss.feature.podcast.PodcastSchedule
 import dev.terashima.yomitorirss.feature.podcast.PodcastSource
+import dev.terashima.yomitorirss.feature.podcast.PODCAST_PREVIOUSLY_COVERED_TITLE_SUFFIX
 import dev.terashima.yomitorirss.feature.podcast.buildEpisodeTitle
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
@@ -341,7 +342,7 @@ class SqlitePodcastRepository(
         val status = if (episodeIndex == 0) PodcastEpisodeStatus.GENERATING else PodcastEpisodeStatus.QUEUED
         val episodeCreatedAt = createdAtEpochMillis + episodeIndex
         val episodeTitle = buildEpisodeTitle(program.name, episodeCreatedAt) +
-          (if (previouslyCovered) "（既報ニュース）" else "")
+          (if (previouslyCovered) PODCAST_PREVIOUSLY_COVERED_TITLE_SUFFIX else "")
         insertOrThrow(
           "podcast_episodes",
           null,
