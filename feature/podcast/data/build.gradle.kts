@@ -24,7 +24,7 @@ dependencies {
   implementation(project(":core:network"))
   implementation(project(":feature:podcast:domain"))
   implementation(project(":feature:rss:domain"))
-  implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core)
   implementation(libs.kotlinx.serialization.json)
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   testImplementation(libs.junit4)
