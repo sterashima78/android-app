@@ -138,13 +138,13 @@ class RepositoryGovernanceSourceTest {
       .digest(jar)
       .joinToString("") { "%02x".format(it) }
 
-    assertTrue("Gradle distribution must be 9.8.1", "gradle-9.8.1-bin.zip" in wrapper)
+    assertTrue("Gradle distribution must be 9.8.2", "gradle-9.8.2-bin.zip" in wrapper)
     assertTrue(
       "The official distribution checksum must remain pinned",
-      "distributionSha256Sum=dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f" in wrapper,
+      "distributionSha256Sum=21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607" in wrapper,
     )
     assertEquals(
-      "The official wrapper JAR must have the published Gradle 9.8.0 checksum (the official bootstrap JAR in the 9.8.1 release tag)",
+      "The official wrapper JAR must retain the pinned official bootstrap checksum",
       "238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5",
       digest,
     )
