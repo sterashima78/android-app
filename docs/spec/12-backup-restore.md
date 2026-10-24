@@ -26,7 +26,7 @@ models:
   - spec-models/alloy/backup_archive.als
 -->
 - backupにはmanifest、database snapshot、allowlistされたuser preferencesを含む。
-- Wi-Fi限定設定と自動バックアップ時刻はallowlistされたuser preferenceとしてbackup対象とするが、Google Drive保存先URI・表示名・実行履歴はbackup対象外とする。
+- Wi-Fi限定設定と自動バックアップ時刻、およびRSSの画面自動取得・失敗再試行間隔はallowlistされたuser preferenceとしてbackup対象とするが、保存先URI・表示名・実行履歴はbackup対象外とする。
 - credential、token、SMB password、Google Drive保存先、端末依存benchmark、model cache等はbackup対象外とする。
 - SMB表紙cacheやSMB動画thumbnail cacheのように再生成可能な派生ファイルはbackup本体へ含めず、復元後にowner featureの経路で再生成・再取得する。
 <!-- /formal-requirement -->
