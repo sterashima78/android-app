@@ -52,24 +52,26 @@ internal class FeedStore(
       folderId = folderId,
       contentTypeOverride = contentTypeOverride,
     )
-    database.write { insertOrThrow("feeds", null, feed.values()) }
-    contentSourceGateway.upsertSourceContent(
-      source = feed.contentSourceSnapshot(),
-      items = parsed.contentItems(),
-      fetchedAt = now,
-      insertedReadAt = now.takeIf { markExistingArticlesRead },
-    )
-    return feed
+    return database.transaction {
+      insertOrThrow("feeds", null, feed.values())
+      contentSourceGateway.upsertSourceContent(
+        source = feed.contentSourceSnapshot(),
+        items = parsed.contentItems(),
+        fetchedAt = now,
+        insertedReadAt = now.takeIf { markExistingArticlesRead },
+      )
+      feed
+    }
   }
 
   fun renameFeed(id: String, name: String) {
     val display = displayName(name)
     require(display.isNotBlank()) { "フィード名を入力してください" }
-    val updated = database.write {
-      update("feeds", contentValues("custom_title" to display), "id=?", arrayOf(id))
+    database.transaction {
+      val updated = update("feeds", contentValues("custom_title" to display), "id=?", arrayOf(id))
+      require(updated > 0) { "フィードが見つかりません" }
+      contentSourceGateway.renameSourceContent(id, display)
     }
-    require(updated > 0) { "フィードが見つかりません" }
-    contentSourceGateway.renameSourceContent(id, display)
   }
 
   fun createFolder(name: String): FeedFolder {
@@ -176,8 +178,8 @@ internal class FeedStore(
 
   fun updateFeedSuccess(feed: Feed, parsed: ParsedFeed, etag: String?, modified: String?) {
     val now = nowIso()
-    database.write {
-      update(
+    database.transaction {
+      val updated = update(
         "feeds",
         contentValues(
           "title" to parsed.title,
@@ -191,16 +193,17 @@ internal class FeedStore(
         "id=?",
         arrayOf(feed.id),
       )
+      require(updated > 0) { "フィードが見つかりません" }
+      val displayTitle = rawQuery(
+        "SELECT COALESCE(custom_title,title) FROM feeds WHERE id=? LIMIT 1",
+        arrayOf(feed.id),
+      ).use { cursor ->
+        require(cursor.moveToFirst()) { "フィードが見つかりません" }
+        cursor.getString(0)
+      }
+      val updatedFeed = feed.copy(title = displayTitle, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl)
+      contentSourceGateway.upsertSourceContent(updatedFeed.contentSourceSnapshot(), parsed.contentItems(), now)
     }
-    val displayTitle = database.readable.rawQuery(
-      "SELECT COALESCE(custom_title,title) FROM feeds WHERE id=? LIMIT 1",
-      arrayOf(feed.id),
-    ).use { cursor ->
-      require(cursor.moveToFirst()) { "フィードが見つかりません" }
-      cursor.getString(0)
-    }
-    val updatedFeed = feed.copy(title = displayTitle, feedUrl = parsed.feedUrl, siteUrl = parsed.siteUrl)
-    contentSourceGateway.upsertSourceContent(updatedFeed.contentSourceSnapshot(), parsed.contentItems(), now)
   }
 
   fun updateFeedNotModified(id: String) {
@@ -216,20 +219,22 @@ internal class FeedStore(
   }
 
   fun deleteFeed(id: String) {
-    val inheritedType = database.readable.rawQuery(
-      """
-        SELECT COALESCE(f.content_type,ff.content_type)
-        FROM feeds f
-        LEFT JOIN feed_folders ff ON ff.id=f.folder_id
-        WHERE f.id=? LIMIT 1
-      """.trimIndent(),
-      arrayOf(id),
-    ).use { cursor ->
-      require(cursor.moveToFirst()) { "フィードが見つかりません" }
-      if (cursor.isNull(0)) null else cursor.getString(0).toContentTypeOrNull()
+    database.transaction {
+      val inheritedType = rawQuery(
+        """
+          SELECT COALESCE(f.content_type,ff.content_type)
+          FROM feeds f
+          LEFT JOIN feed_folders ff ON ff.id=f.folder_id
+          WHERE f.id=? LIMIT 1
+        """.trimIndent(),
+        arrayOf(id),
+      ).use { cursor ->
+        require(cursor.moveToFirst()) { "フィードが見つかりません" }
+        if (cursor.isNull(0)) null else cursor.getString(0).toContentTypeOrNull()
+      }
+      contentSourceGateway.detachSourceContent(id, inheritedType)
+      delete("feeds", "id=?", arrayOf(id))
     }
-    contentSourceGateway.detachSourceContent(id, inheritedType)
-    database.write { delete("feeds", "id=?", arrayOf(id)) }
   }
 
   private fun folderNameExists(normalizedName: String, excludingId: String? = null): Boolean {
