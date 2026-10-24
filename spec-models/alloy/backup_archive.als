@@ -2,8 +2,8 @@
 // - docs/spec/12-backup-restore.md
 //
 // Covers:
-// - BACKUP-ARCHIVE-001@sha256:3f78759f9b0390c7fc9cd90828f18b29194945278a2f72f5ace27a3f2945552d -> RequiredBackupMembersIncluded
-// - BACKUP-ARCHIVE-001@sha256:3f78759f9b0390c7fc9cd90828f18b29194945278a2f72f5ace27a3f2945552d -> ExcludedDataNeverIncluded
+// - BACKUP-ARCHIVE-001@sha256:dfd9ddbff42691d486e9d0f9bbc6f8088ce90faeb924690f9825be9b526695c4 -> RequiredBackupMembersIncluded
+// - BACKUP-ARCHIVE-001@sha256:dfd9ddbff42691d486e9d0f9bbc6f8088ce90faeb924690f9825be9b526695c4 -> ExcludedDataNeverIncluded
 //
 // Scope:
 // The model represents the backup-policy categories that matter to the
@@ -20,6 +20,7 @@ one sig Manifest extends IncludedItem {}
 one sig DatabaseSnapshot extends IncludedItem {}
 one sig WifiOnlyPreference extends IncludedItem {}
 one sig BackupSchedulePreference extends IncludedItem {}
+one sig RssRefreshTimingPreference extends IncludedItem {}
 
 one sig Credential extends ExcludedItem {}
 one sig Token extends ExcludedItem {}
@@ -45,6 +46,7 @@ assert RequiredBackupMembersIncluded {
   DatabaseSnapshot in BackupArchive.members
   WifiOnlyPreference in BackupArchive.members
   BackupSchedulePreference in BackupArchive.members
+  RssRefreshTimingPreference in BackupArchive.members
 }
 
 assert ExcludedDataNeverIncluded {
