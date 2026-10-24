@@ -103,6 +103,7 @@ class AndroidBackupRulesArchitectureTest {
     val KEY_FILTERED_ARCHIVE_ONLY_PREFERENCES = setOf(
       "library_ai_preferences.xml",
       "local_summary_models.xml",
+      "rss_refresh.xml",
     )
     val FORBIDDEN_PREFERENCES = setOf(
       "chatgpt_oauth_secure.xml",
