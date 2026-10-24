@@ -28,7 +28,7 @@ dependencies {
   implementation(project(":core:database"))
   implementation(project(":core:network"))
 
-  implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core)
   implementation(libs.androidx.webkit)
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
