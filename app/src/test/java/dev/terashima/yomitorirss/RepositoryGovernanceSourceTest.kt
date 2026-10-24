@@ -37,7 +37,7 @@ class RepositoryGovernanceSourceTest {
     val settingsData = source("feature/settings/data/build.gradle.kts")
     val chatData = source("feature/chat/data/build.gradle.kts")
 
-    assertTrue("catalog must own the AndroidX Core version", "androidx-core = \"1.19.0\"" in catalog)
+    assertTrue("catalog must own the AndroidX Core version", "androidx-core = \"1.19.1\"" in catalog)
     assertTrue("catalog must own the AndroidX Activity version", "androidx-activity = \"1.13.0\"" in catalog)
     assertTrue("catalog must own the AndroidX Lifecycle version", "androidx-lifecycle = \"2.11.0\"" in catalog)
     assertTrue("catalog must own the AndroidX Navigation version", "androidx-navigation = \"2.10.1\"" in catalog)
@@ -54,15 +54,15 @@ class RepositoryGovernanceSourceTest {
         "libs.androidx.navigation.compose",
       ),
       "app/presentation/build.gradle.kts" to listOf(
-        "libs.androidx.core.ktx",
+        "libs.androidx.core",
         "libs.androidx.activity.compose",
         "libs.androidx.navigation.compose",
       ),
-      "feature/web/data/build.gradle.kts" to listOf("libs.androidx.core.ktx"),
-      "feature/summary/data/build.gradle.kts" to listOf("libs.androidx.core.ktx"),
-      "feature/knowledge/data/build.gradle.kts" to listOf("libs.androidx.core.ktx"),
+      "feature/web/data/build.gradle.kts" to listOf("libs.androidx.core"),
+      "feature/summary/data/build.gradle.kts" to listOf("libs.androidx.core"),
+      "feature/knowledge/data/build.gradle.kts" to listOf("libs.androidx.core"),
       "feature/library/data/build.gradle.kts" to listOf(
-        "libs.androidx.core.ktx",
+        "libs.androidx.core",
         "libs.androidx.webkit",
       ),
       "feature/asset/ui/build.gradle.kts" to listOf("libs.androidx.activity.compose"),
@@ -138,13 +138,13 @@ class RepositoryGovernanceSourceTest {
       .digest(jar)
       .joinToString("") { "%02x".format(it) }
 
-    assertTrue("Gradle distribution must be 9.8.1", "gradle-9.8.1-bin.zip" in wrapper)
+    assertTrue("Gradle distribution must be 9.8.2", "gradle-9.8.2-bin.zip" in wrapper)
     assertTrue(
       "The official distribution checksum must remain pinned",
-      "distributionSha256Sum=dce76f55f8e251a3a1f130eb120f30b3d271de2b76c9b0729d316b5a1b6dc01f" in wrapper,
+      "distributionSha256Sum=21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607" in wrapper,
     )
     assertEquals(
-      "The official wrapper JAR must have the published Gradle 9.8.0 checksum (the official bootstrap JAR in the 9.8.1 release tag)",
+      "The official wrapper JAR must retain the pinned official bootstrap checksum",
       "238e777fcddd7e34f9708186085def2abd6e08e658505b38718d79d74c21abd5",
       digest,
     )

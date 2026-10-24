@@ -19,7 +19,7 @@ android {
 dependencies {
   implementation(project(":feature:audio:domain"))
   implementation(project(":feature:summary:domain"))
-  implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.core)
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.session)
   implementation(libs.kotlinx.coroutines.android)

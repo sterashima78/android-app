@@ -5,10 +5,12 @@ import android.util.Log
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
+import dev.terashima.yomitorirss.feature.rss.Feed
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.markReadLaterWithPriorityFeedback
 import dev.terashima.yomitorirss.feature.widget.WidgetArticle
 import dev.terashima.yomitorirss.feature.widget.WidgetRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 
 class DefaultWidgetRepository(
@@ -64,14 +66,10 @@ class DefaultWidgetRepository(
   override suspend fun refreshFeeds(force: Boolean) {
     val minimumAgeMillis = automaticIntervalMinutes() * 60_000L
     val failureRetryMillis = failureRetryIntervalMinutes() * 60_000L
-    feedRepository.listFeeds()
-      .filter { sourceSelector(it.feedUrl) }
-      .forEach { feed ->
-        runCatching {
-          if (force) feedRepository.refreshFeed(feed)
-          else feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
-        }
-      }
+    refreshWidgetFeeds(feedRepository.listFeeds().filter { sourceSelector(it.feedUrl) }) { feed ->
+      if (force) feedRepository.refreshFeed(feed)
+      else feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
+    }
   }
 }
 
@@ -84,4 +82,15 @@ internal suspend fun notifyWidgetReadLaterAdded(
   findArticle(articleId)
     ?.takeIf { article -> sourceSelector(article.sourceFeedUrl) }
     ?.let(onReadLaterSaved)
+}
+
+/** Keep source failures isolated without treating worker cancellation as a source failure. */
+internal suspend fun refreshWidgetFeeds(
+  feeds: List<Feed>,
+  refresh: suspend (Feed) -> Unit,
+) {
+  feeds.forEach { feed ->
+    runCatching { refresh(feed) }
+      .onFailure { error -> if (error is CancellationException) throw error }
+  }
 }

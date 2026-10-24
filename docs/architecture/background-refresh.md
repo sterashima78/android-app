@@ -45,16 +45,16 @@ WorkManager の periodic work の最短周期が15分であるため、それ未
 
 既存の「Wi-Fi 接続中のみ取得」は統合 refresh にも適用する。network constraint が満たされない期間は、設定した周期を過ぎても取得を開始しない。
 
-## Mail migration boundary
 ## RSS refresh policy and concurrency
 
 RSS-owned `RefreshFeedsUseCase` reads RSS-owned timing preferences on each batch and invokes the conditional refresh capability for automatic screen and scheduled refreshes. The RSS Settings tab owns screen and failure-retry preferences. The per-feed nullable override takes priority over the matched Web-scraping rule override; otherwise the calling mode's screen or scheduled baseline is used. The application-scope background scheduling period remains separately configured. Explicit user refreshes bypass the freshness and retry intervals.
 
-`DefaultFeedRepository` performs the fresh state check while holding a per-feed coroutine mutex. It re-reads the persisted feed after acquiring the lock and coalesces simultaneous refresh attempts, including direct callers such as widgets and other feed consumers. Successful responses (including HTTP 304) update `last_fetched_at` and reset failure suppression. Transient failure timestamps are process-local; a process restart may permit an immediate retry. The in-flight feed ID StateFlow lets independent RSS screen view models display shared refresh activity.
+`DefaultFeedRepository` performs the fresh state check while holding a per-feed coroutine mutex. It re-reads the persisted feed after acquiring the lock and coalesces simultaneous refresh attempts, including direct callers such as widgets and other feed consumers. Successful responses (including HTTP 304) update `last_fetched_at` and reset failure suppression. For HTTP responses with content, RSS-owned feed metadata and Content-owned source updates participate in one shared database transaction; failures must not advance `last_fetched_at` independently of content persistence. Transient failure timestamps are process-local; a process restart may permit an immediate retry. The in-flight feed ID StateFlow lets independent RSS screen view models display shared refresh activity.
 
-Imported subscriptions without a fetched response retain `last_fetched_at = null` so that first-time synchronization is not mistaken for a recent successful download. RSS-owned feeds and Web-scraping rule tables store nullable per-source overrides, with version 42 -> 43 migration. The existing Worker identity remains unchanged. Widget auto refresh uses the same RSS policy; an explicit widget refresh action bypasses the interval.
+Imported subscriptions without a fetched response retain `last_fetched_at = null` so that first-time synchronization is not mistaken for a recent successful download. RSS-owned feeds and Web-scraping rule tables store nullable per-source overrides, with version 42 -> 43 migration. The existing Worker identity remains unchanged. Widget auto refresh uses the same RSS policy; an explicit widget refresh action bypasses the interval. Per-feed failures are isolated, but cancellation of the owning Worker propagates immediately without processing further feeds.
 
 
+## Mail migration boundary
 
 メールの初回同期と周期同期は責務を分ける。
 

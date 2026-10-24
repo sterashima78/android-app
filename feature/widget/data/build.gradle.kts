@@ -24,4 +24,6 @@ dependencies {
   implementation(project(":feature:bookmark:domain"))
   implementation("androidx.work:work-runtime-ktx:2.11.2")
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+
+  testImplementation(libs.junit4)
 }

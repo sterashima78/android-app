@@ -175,6 +175,10 @@ internal class BackupPreferences(context: Context) {
         ),
       ),
       PreferenceBackupRule("podcast_topic_clustering", allowedKeys = setOf("similarity_threshold_percent")),
+      PreferenceBackupRule(
+        name = "rss_refresh",
+        allowedKeys = setOf("screen_refresh_interval_minutes", "failure_retry_interval_minutes"),
+      ),
       PreferenceBackupRule("summary_preferences"),
       PreferenceBackupRule("workout"),
       PreferenceBackupRule("workout_ai"),
