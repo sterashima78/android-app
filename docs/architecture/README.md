@@ -28,7 +28,8 @@ ADR は「なぜその判断をしたか」を残す Decision Log とし、こ�
 - [audio-playback.md](audio-playback.md): 保存済み要約のTTS、Media3、foreground media playbackのownership / runtime boundary
 - [podcast.md](podcast.md): Podcast専用source、feed取得、episode生成、consumed state、Audio委譲の境界
 - [video.md](video.md): SMB / Web 動画catalog、Web extractor、視聴状態、foreground Media3 playbackのownership / runtime boundary
-- [background-refresh.md](background-refresh.md): 統合ビューの周期更新、Gmail周期同期移管、新着通知・badge の現在の境界
+- [background-refresh.md](background-refresh.md): 統合ビューの周期更新、メール周期同期移管、新着通知・badge の現在の境界
+- [traffic-diagnostics.md](traffic-diagnostics.md): 通信量診断の集計・プライバシー・精度境界
 - [ai-runtime.md](ai-runtime.md): Local / Cloud AI の provider・execution・failure boundary
 - [chat-retrieval.md](chat-retrieval.md): AI Chat の lexical retrieval、query reformulation、candidate/detail boundary
 - [knowledge.md](knowledge.md): Knowledge自動Wikiのトピック分割、provider別source上限、background execution
