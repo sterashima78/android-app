@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 data class PodcastUiState(
   val initialized: Boolean = false,
   val topicSimilarityThreshold: Double = DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD,
+  val generationLogs: List<PodcastGenerationLog> = emptyList(),
   val programs: List<PodcastProgram> = emptyList(),
   val sources: List<PodcastSource> = emptyList(),
   val selectedProgramId: String? = null,
@@ -40,6 +41,7 @@ class PodcastViewModel(
   private val scheduleController: PodcastScheduleController,
   private val audioPlaybackController: AudioPlaybackController,
   private val topicClusteringSettings: PodcastTopicClusteringSettings,
+  private val logStore: PodcastGenerationLogStore = NoOpPodcastGenerationLogStore,
 ) : ViewModel() {
   private val _state = MutableStateFlow(PodcastUiState())
   val state: StateFlow<PodcastUiState> = _state.asStateFlow()
@@ -51,10 +53,17 @@ class PodcastViewModel(
         _state.update { it.copy(topicSimilarityThreshold = threshold) }
       }
     }
+    viewModelScope.launch {
+      logStore.logs.collect { entries -> _state.update { it.copy(generationLogs = entries) } }
+    }
     reload()
     viewModelScope.launch(Dispatchers.IO) {
       repository.changes.collect { reloadNow() }
     }
+  }
+
+  fun clearGenerationLogs(programId: String) {
+    logStore.clear(programId)
   }
 
   fun updateTopicSimilarityThreshold(value: Double) {
@@ -207,6 +216,7 @@ class PodcastViewModel(
       runCatching {
         scheduleController.cancel(programId)
         repository.deleteProgram(programId)
+        logStore.clear(programId)
       }.onSuccess {
         _state.update { it.copy(selectedProgramId = null, playbackEpisodeId = null, message = "番組を削除しました") }
         reload()
@@ -405,6 +415,7 @@ class PodcastViewModel(
     private val scheduleController: PodcastScheduleController,
     private val audioPlaybackController: AudioPlaybackController,
     private val topicClusteringSettings: PodcastTopicClusteringSettings,
+    private val logStore: PodcastGenerationLogStore = NoOpPodcastGenerationLogStore,
   ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
       require(modelClass.isAssignableFrom(PodcastViewModel::class.java))
@@ -415,6 +426,7 @@ class PodcastViewModel(
         scheduleController,
         audioPlaybackController,
         topicClusteringSettings,
+        logStore,
       ) as T
     }
   }
