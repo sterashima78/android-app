@@ -107,6 +107,7 @@ fun PodcastRoute(
         state = state,
         onSelectProgram = viewModel::selectProgram,
         onTopicSimilarityThresholdChange = viewModel::updateTopicSimilarityThreshold,
+        onClearGenerationLogs = viewModel::clearGenerationLogs,
         onShowArchived = viewModel::setShowArchivedEpisodes,
         onGenerate = viewModel::generate,
         onEdit = { program ->
@@ -183,6 +184,7 @@ private fun PodcastContent(
   state: PodcastUiState,
   onSelectProgram: (String) -> Unit,
   onTopicSimilarityThresholdChange: (Double) -> Unit,
+  onClearGenerationLogs: (String) -> Unit,
   onShowArchived: (Boolean) -> Unit,
   onGenerate: (String) -> Unit,
   onEdit: (PodcastProgram) -> Unit,
@@ -242,6 +244,12 @@ private fun PodcastContent(
         onUpdate = onTopicSimilarityThresholdChange,
       )
 
+      GenerationLogsCard(
+        programId = program.id,
+        logs = state.generationLogs,
+        onClear = { onClearGenerationLogs(program.id) },
+      )
+
       Text("エピソード", style = MaterialTheme.typography.titleMedium)
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
@@ -284,6 +292,77 @@ private fun PodcastContent(
     Spacer(Modifier.height(72.dp))
   }
 }
+
+@Composable
+private fun GenerationLogsCard(
+  programId: String,
+  logs: List<PodcastGenerationLog>,
+  onClear: () -> Unit,
+) {
+  val entries = logs.filter { it.programId == programId }
+  var expanded by remember(programId) { mutableStateOf(false) }
+  Card(modifier = Modifier.fillMaxWidth()) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+      ) {
+        Text("生成ログ", style = MaterialTheme.typography.titleMedium)
+        TextButton(onClick = { expanded = !expanded }) {
+          Text(if (expanded) "閉じる" else "表示（${entries.size}件）")
+        }
+      }
+      val recentWarning = entries.firstOrNull {
+        it.level != PodcastGenerationLogLevel.INFO
+      }
+      if (!expanded && recentWarning != null) {
+        Text(
+          "直近の警告: ${recentWarning.message}",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error,
+        )
+      }
+      if (expanded) {
+        Text(
+          "生成処理と既報判定の実行結果です。新しい記録から表示します。最大100件を端末内に保持します。",
+          style = MaterialTheme.typography.bodySmall,
+        )
+        if (entries.isEmpty()) {
+          Text("生成ログはまだありません。", style = MaterialTheme.typography.bodyMedium)
+        }
+        entries.take(30).forEach { entry ->
+          val severity = when (entry.level) {
+            PodcastGenerationLogLevel.INFO -> "情報"
+            PodcastGenerationLogLevel.WARNING -> "警告"
+            PodcastGenerationLogLevel.ERROR -> "エラー"
+          }
+          Text(
+            "${formatGenerationLogTime(entry.recordedAtEpochMillis)} [${severity}] ${entry.message}",
+            style = MaterialTheme.typography.bodySmall,
+            color = if (entry.level == PodcastGenerationLogLevel.INFO) {
+              MaterialTheme.colorScheme.onSurface
+            } else {
+              MaterialTheme.colorScheme.error
+            },
+          )
+          HorizontalDivider()
+        }
+        if (entries.size > 30) {
+          Text("表示は最新30件までです。", style = MaterialTheme.typography.bodySmall)
+        }
+        if (entries.isNotEmpty()) {
+          TextButton(onClick = onClear) { Text("この番組の生成ログを消去") }
+        }
+      }
+    }
+  }
+}
+
+private fun formatGenerationLogTime(epochMillis: Long): String =
+  GENERATION_LOG_DATE_FORMATTER.format(Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()))
+
+private val GENERATION_LOG_DATE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm:ss")
 
 @Composable
 private fun TopicSimilarityThresholdCard(
