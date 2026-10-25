@@ -263,12 +263,6 @@ interface PodcastRepository {
     require(repeatedCandidates.isEmpty()) { "repository does not support previously covered episodes" }
     return reserveEpisode(program, candidates, createdAtEpochMillis, clusteringStatus)
   }
-  suspend fun reserveComparisonEpisode(
-    program: PodcastProgram,
-    candidates: List<PodcastFeedEntry>,
-    createdAtEpochMillis: Long,
-    clusteringStatus: PodcastClusteringStatus,
-  ): PodcastEpisode = error("Comparison episode support is unavailable")
   suspend fun prepareEpisodeRetry(episodeId: String): PodcastEpisode
   suspend fun prepareEpisodeRebuild(
     episodeId: String,
