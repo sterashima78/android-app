@@ -442,7 +442,7 @@ private fun PodcastEpisodeArticle.toFeedEntry(): PodcastFeedEntry = PodcastFeedE
 )
 
 private const val CLOUD_CHAPTER_PARALLELISM = 3
-private const val RECENT_PODCAST_ARCHIVE_MILLIS = 2L * 24 * 60 * 60 * 1_000
+private const val RECENT_PODCAST_ARCHIVE_MILLIS = 3L * 24 * 60 * 60 * 1_000
 
 private const val MAX_ARCHIVE_COMPARISON_ITEMS = 24
 private const val ARCHIVE_COMPARISON_BATCH_SIZE = 12
