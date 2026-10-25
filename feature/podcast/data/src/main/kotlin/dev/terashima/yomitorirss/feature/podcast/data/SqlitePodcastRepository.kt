@@ -474,6 +474,7 @@ class SqlitePodcastRepository(
           putNull("error_message")
           putNull("last_played_chapter")
           put("clustering_status", clusteringStatus.name)
+          put("clustering_mode", PodcastClusteringMode.TOPIC.name)
         },
         "id=?",
         arrayOf(episodeId),
