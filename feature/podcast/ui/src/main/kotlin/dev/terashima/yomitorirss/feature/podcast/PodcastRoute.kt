@@ -318,7 +318,7 @@ private fun GenerationLogsCard(
       }
       if (!expanded && recentWarning != null) {
         Text(
-          "直近の警告: ${recentWarning.message}",
+          "直近の警告・エラー: ${recentWarning.message}",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.error,
         )
