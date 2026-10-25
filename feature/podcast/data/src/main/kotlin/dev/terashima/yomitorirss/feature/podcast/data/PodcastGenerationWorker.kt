@@ -85,16 +85,7 @@ class PodcastGenerationWorker(
       try {
         when (operation) {
           PodcastGenerationOperation.SCHEDULED_GENERATE,
-          PodcastGenerationOperation.GENERATE -> generatePodcastEpisode.generate(
-            programId,
-            inputData.getString(KEY_CLUSTERING_MODE)?.let(PodcastClusteringMode::valueOf),
-            onProgress,
-          )
-          PodcastGenerationOperation.COMPARE -> {
-            val episodeId = requireNotNull(inputData.getString(KEY_EPISODE_ID))
-            val mode = PodcastClusteringMode.valueOf(requireNotNull(inputData.getString(KEY_CLUSTERING_MODE)))
-            generatePodcastEpisode.compare(episodeId, mode, onProgress)
-          }
+          PodcastGenerationOperation.GENERATE -> generatePodcastEpisode.generate(programId, onProgress)
           PodcastGenerationOperation.REGENERATE -> {
             val episodeId = inputData.getString(KEY_EPISODE_ID) ?: return Result.failure()
             generatePodcastEpisode.regenerate(episodeId, onProgress)
@@ -253,7 +244,6 @@ class WorkManagerPodcastGenerationController(
       .putString(PodcastGenerationWorker.KEY_PROGRAM_ID, programId)
       .putString(PodcastGenerationWorker.KEY_OPERATION, operation.name)
       .apply { episodeId?.let { putString(PodcastGenerationWorker.KEY_EPISODE_ID, it) } }
-      .apply { mode?.let { putString(PodcastGenerationWorker.KEY_CLUSTERING_MODE, it.name) } }
       .build()
     val request = OneTimeWorkRequestBuilder<PodcastGenerationWorker>()
       .setInputData(data)
