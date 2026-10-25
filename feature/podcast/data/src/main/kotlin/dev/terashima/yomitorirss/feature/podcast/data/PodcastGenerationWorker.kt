@@ -71,6 +71,7 @@ class PodcastGenerationWorker(
           cloudPaused = CloudAiBackgroundExecutionPreferences(applicationContext).paused,
         )
       ) {
+        logFailure(programId, PodcastGenerationLogLevel.INFO, "定刻生成をスキップ: 選択した生成AIが一時停止中です")
         scheduleNext = true
         return Result.success()
       }
