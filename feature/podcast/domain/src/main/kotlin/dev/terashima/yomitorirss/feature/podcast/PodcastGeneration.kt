@@ -48,7 +48,13 @@ class GeneratePodcastEpisodeUseCase(
   private val newsCategorizer: PodcastNewsCategorizer = OtherPodcastNewsCategorizer,
   private val newsExcluder: PodcastNewsExcluder = IncludeAllPodcastNews,
   private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
+  private val logStore: PodcastGenerationLogStore = NoOpPodcastGenerationLogStore,
 ) {
+  private fun log(programId: String, level: PodcastGenerationLogLevel, message: String) {
+    // Diagnostics must not affect the generation result if the local store is unavailable.
+    runCatching { logStore.record(PodcastGenerationLog(programId, nowEpochMillis(), level, message)) }
+  }
+
   private val activeProgramIds = mutableSetOf<String>()
 
   suspend fun generate(
@@ -57,14 +63,22 @@ class GeneratePodcastEpisodeUseCase(
   ): PodcastGenerationResult = withProgramGeneration(programId) {
     val savedProgram = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
     val program = savedProgram.copy(clusteringMode = PodcastClusteringMode.TOPIC)
-    repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it, onProgress) }
+    repository.claimPendingEpisode(programId)?.let {
+      log(programId, PodcastGenerationLogLevel.INFO, "生成待ちエピソードの処理を再開しました")
+      return@withProgramGeneration generateReserved(program, it, onProgress)
+    }
+    log(programId, PodcastGenerationLogLevel.INFO, "新規エピソード生成を開始しました")
     val sources = repository.listSources().filter { it.id in program.sourceIds }
     require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
       "番組に利用できないソースがあります。番組設定を確認してください"
     }
     val candidates = feedContentSource.latestEntries(sources, Int.MAX_VALUE)
     val availableCandidates = candidateFilter.availableEntries(program.id, candidates)
-    if (availableCandidates.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    log(program.id, PodcastGenerationLogLevel.INFO, "フィード取得: ${candidates.size}件、未処理: ${availableCandidates.size}件")
+    if (availableCandidates.isEmpty()) {
+      log(program.id, PodcastGenerationLogLevel.INFO, "新たな生成対象はありません")
+      return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    }
     val exclusion = if (program.exclusionPrompt.isBlank()) {
       PodcastNewsExclusionResult(availableCandidates, emptyList())
     } else {
@@ -76,7 +90,11 @@ class GeneratePodcastEpisodeUseCase(
     if (exclusion.excluded.isNotEmpty()) {
       repository.recordExcludedEntries(program.id, exclusion.excluded, nowEpochMillis())
     }
-    if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    log(program.id, PodcastGenerationLogLevel.INFO, "除外判定: 対象${exclusion.included.size}件、除外${exclusion.excluded.size}件")
+    if (exclusion.included.isEmpty()) {
+      log(program.id, PodcastGenerationLogLevel.INFO, "除外条件により生成対象はありません")
+      return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    }
     val compared = compareRecentlyCoveredNews(program, exclusion.included)
     val fresh = compared.entries.takeIf { it.isNotEmpty() }
       ?.let { clusterCandidates(program, it, compared.clustering) }
@@ -90,6 +108,8 @@ class GeneratePodcastEpisodeUseCase(
       repeatedCandidates = repeated?.entries.orEmpty(),
       repeatedClusteringStatus = repeated?.status,
     ) ?: return@withProgramGeneration PodcastGenerationResult.NoNewArticles
+    log(program.id, PodcastGenerationLogLevel.INFO,
+      "エピソード予約: 通常${compared.entries.size}記事、既報${compared.repeatedEntries.size}記事")
     generateReserved(program, reserved, onProgress)
   }
 
@@ -102,6 +122,7 @@ class GeneratePodcastEpisodeUseCase(
       val episode = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
       require(episode.status == PodcastEpisodeStatus.FAILED) { "only failed episodes can be retried" }
       val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      log(program.id, PodcastGenerationLogLevel.INFO, "失敗したエピソードの再試行を開始しました")
       generateReserved(program, repository.prepareEpisodeRetry(episode.id), onProgress)
     }
   }
@@ -117,6 +138,7 @@ class GeneratePodcastEpisodeUseCase(
         "only ready or failed episodes can be regenerated"
       }
       val program = requireNotNull(repository.findProgram(episode.programId)) { "program not found: ${episode.programId}" }
+      log(program.id, PodcastGenerationLogLevel.INFO, "保存済みエピソードの作り直しを開始しました")
       val candidates = episode.articles.map(PodcastEpisodeArticle::toFeedEntry)
       val exclusion = if (program.exclusionPrompt.isBlank()) {
         PodcastNewsExclusionResult(candidates, emptyList())
@@ -169,7 +191,10 @@ class GeneratePodcastEpisodeUseCase(
       programId = program.id,
       sinceEpochMillis = nowEpochMillis() - RECENT_PODCAST_ARCHIVE_MILLIS,
     )
-    if (recentArchive.isEmpty()) return PodcastArchiveComparison(candidates)
+    if (recentArchive.isEmpty()) {
+      log(program.id, PodcastGenerationLogLevel.INFO, "既報判定を省略: 72時間以内のアーカイブ記事がありません")
+      return PodcastArchiveComparison(candidates)
+    }
 
     // A normal-sized comparison retains its complete vector partition for reuse below.
     // Larger inputs are compared in bounded batches without losing archive coverage.
@@ -182,6 +207,7 @@ class GeneratePodcastEpisodeUseCase(
     } catch (error: CancellationException) {
       throw error
     } catch (_: Exception) {
+      log(program.id, PodcastGenerationLogLevel.WARNING, "既報判定に失敗: 比較処理の例外。全候補を通常ニュースとして扱います")
       // Uncertain history must not silently discard newly available entries.
       return PodcastArchiveComparison(candidates)
     }
@@ -190,6 +216,8 @@ class GeneratePodcastEpisodeUseCase(
       comparison.groups.flatten().toSet() != (0 until originalCount).toSet() ||
       comparison.groups.sumOf { it.size } != originalCount
     ) {
+      log(program.id, PodcastGenerationLogLevel.WARNING,
+        "既報判定に失敗: 分類状態${comparison.status.name}または不正な結果。全候補を通常ニュースとして扱います")
       return PodcastArchiveComparison(candidates)
     }
 
@@ -213,6 +241,8 @@ class GeneratePodcastEpisodeUseCase(
     }
     val (newEntries, newClustering) = remap(newGroups)
     val (repeatedEntries, repeatedClustering) = remap(repeatedGroups)
+    log(program.id, PodcastGenerationLogLevel.INFO,
+      "既報判定成功: 参照${recentArchive.size}記事、通常${newEntries.size}記事、既報${repeatedEntries.size}記事")
     return PodcastArchiveComparison(
       entries = newEntries,
       repeatedEntries = repeatedEntries,
@@ -233,6 +263,8 @@ class GeneratePodcastEpisodeUseCase(
     if (candidateBatches.size > MAX_ARCHIVE_COMPARISON_CALLS ||
       archiveBatches.size > MAX_ARCHIVE_COMPARISON_CALLS / candidateBatches.size
     ) {
+      log(program.id, PodcastGenerationLogLevel.WARNING,
+        "既報判定を省略: 最大8回の比較予算を超過。全候補を通常ニュースとして扱います")
       return PodcastArchiveComparison(candidates)
     }
 
@@ -245,12 +277,16 @@ class GeneratePodcastEpisodeUseCase(
         } catch (error: CancellationException) {
           throw error
         } catch (_: Exception) {
+          log(program.id, PodcastGenerationLogLevel.WARNING,
+            "既報判定に失敗: 分割比較中の例外。全候補を通常ニュースとして扱います")
           return PodcastArchiveComparison(candidates)
         }
         if (result.status != PodcastClusteringStatus.SUCCESS ||
           result.groups.flatten().toSet() != combined.indices.toSet() ||
           result.groups.sumOf { it.size } != combined.size
         ) {
+          log(program.id, PodcastGenerationLogLevel.WARNING,
+            "既報判定に失敗: 分割比較の分類状態${result.status.name}または不正な結果。全候補を通常ニュースとして扱います")
           return PodcastArchiveComparison(candidates)
         }
         result.groups
@@ -261,6 +297,8 @@ class GeneratePodcastEpisodeUseCase(
           }
       }
     }
+    log(program.id, PodcastGenerationLogLevel.INFO,
+      "既報判定成功（分割比較）: 参照${archive.size}記事、通常${candidates.size - covered.size}記事、既報${covered.size}記事")
     // Batch partitions cannot be reused as a global partition; cluster both segments again.
     return PodcastArchiveComparison(
       entries = candidates.filterIndexed { index, _ -> index !in covered },
@@ -274,6 +312,12 @@ class GeneratePodcastEpisodeUseCase(
     preclassified: PodcastNewsClusteringResult? = null,
   ): PodcastClusteredCandidates {
     val result = preclassified ?: newsClusterer.cluster(program.provider, candidates)
+    if (result.status == PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR ||
+      result.status == PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT
+    ) {
+      log(program.id, PodcastGenerationLogLevel.WARNING,
+        "ニュース分類がフォールバックしました: ${result.status.name}。1記事ずつ扱います")
+    }
     val groups = result.groups
     require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
       "news clusterer must contain every candidate exactly once"
@@ -374,12 +418,15 @@ class GeneratePodcastEpisodeUseCase(
         (if (initialEpisode.title.endsWith(PODCAST_PREVIOUSLY_COVERED_TITLE_SUFFIX)) {
           PODCAST_PREVIOUSLY_COVERED_TITLE_SUFFIX
         } else "")
-      PodcastGenerationResult.Generated(repository.completeEpisode(episode.id, title, script))
+      val completed = repository.completeEpisode(episode.id, title, script)
+      log(program.id, PodcastGenerationLogLevel.INFO, "エピソードを生成しました: ${groups.size}ニュース")
+      PodcastGenerationResult.Generated(completed)
     } catch (error: CancellationException) {
       throw error
     } catch (error: Throwable) {
       val message = error.message ?: error::class.simpleName ?: "generation failed"
       runCatching { repository.failEpisode(episodeId, message) }
+      log(program.id, PodcastGenerationLogLevel.ERROR, "エピソード生成に失敗しました（${error.javaClass.simpleName}）")
       throw error
     }
   }
