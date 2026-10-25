@@ -18,6 +18,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastCloudTextInference
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsCategorizer
 import dev.terashima.yomitorirss.feature.podcast.data.EmbeddingPodcastTopicClusterer
+import dev.terashima.yomitorirss.feature.podcast.data.PodcastGenerationLogPreferences
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastTopicClusteringPreferences
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsExcluder
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastScriptGenerator
@@ -53,6 +54,7 @@ internal class AppPodcastRuntimeDependencies(
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
   private val repository = SqlitePodcastRepository(database, persistenceChanges)
   private val topicClusteringSettings = PodcastTopicClusteringPreferences(application)
+  private val generationLogs = PodcastGenerationLogPreferences(application)
   val taskReader: PodcastGenerationTaskReader = repository
   private val scriptGenerator = DefaultPodcastScriptGenerator(
     localInference = localTextInference,
@@ -80,6 +82,7 @@ internal class AppPodcastRuntimeDependencies(
       cloudStructuredInference = cloudStructuredTextInference,
     ),
     candidateFilter = SqlitePodcastCandidateFilter(database),
+    logStore = generationLogs,
   )
   private val scheduleController = WorkManagerPodcastScheduleController(application)
   private val generationController = WorkManagerPodcastGenerationController(application)
@@ -90,9 +93,10 @@ internal class AppPodcastRuntimeDependencies(
     scheduleController = scheduleController,
     audioPlaybackController = audioPlaybackController,
     topicClusteringSettings = topicClusteringSettings,
+    logStore = generationLogs,
   )
 
-  val workerFactory = PodcastGenerationWorkerFactory(repository, generationUseCase, scheduleController)
+  val workerFactory = PodcastGenerationWorkerFactory(repository, generationUseCase, scheduleController, generationLogs)
 
   fun restoreSchedules() {
     scope.launch {
