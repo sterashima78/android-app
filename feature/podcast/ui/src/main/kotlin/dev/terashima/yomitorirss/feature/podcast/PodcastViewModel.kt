@@ -216,7 +216,7 @@ class PodcastViewModel(
       runCatching {
         scheduleController.cancel(programId)
         repository.deleteProgram(programId)
-        logStore.clear(programId)
+        runCatching { logStore.clear(programId) }
       }.onSuccess {
         _state.update { it.copy(selectedProgramId = null, playbackEpisodeId = null, message = "番組を削除しました") }
         reload()
