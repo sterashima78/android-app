@@ -52,6 +52,12 @@ The device-wide `PodcastTopicClusteringSettings` preference is shared by all pro
 
 Existing `clustering_mode` columns and stored `EVENT` values remain for read compatibility without a database migration. New episodes and explicit rebuilds are tagged `TOPIC`; existing completed episodes retain their saved chapter partitions and remain playable. Historic program rows marked `EVENT` do not select the removed classifier.
 
+## Generation diagnostic history
+
+Podcast の生成・既報判定は Podcast-owned `PodcastGenerationLogStore` に処理結果を記録する。Domain が既知のステージ・件数・失敗種別から作る定型メッセージのみを記録し、記事タイトル / feed body / URL / prompt / 生の exception message を保存しない。比較失敗、分類 fallback、比較予算超過は通常生成を続ける場合でも WARNING として残し、Worker 側の未予約段階での失敗も ERROR として記録する。
+
+Data の `PodcastGenerationLogPreferences` は SharedPreferences へ最新100件を保存する。これはローカルの消去可能な診断 cache であり、generation checkpoint / episode / consumed identity の source of truth ではない。既存の backup preferences allowlist に追加しない。generation use case と Worker が同じ store に追記し、`StateFlow` 経由で UI が番組別ログを表示する。消去や保存失敗で生成状態を変更せず、ログ失敗が生成結果に影響しない。database migration、追加 permissions、外部通信を必要としない。
+
 ## Background execution boundary
 
 Podcast画面からの新規生成と作り直しは `PodcastGenerationController` へ依頼し、UIの `viewModelScope` では長時間生成を実行しない。controllerはPodcast-owned WorkManagerへ即時workを登録し、定刻生成と同じ `PodcastGenerationWorker` / application-scope dependency graphを利用する。手動workと定刻workは番組ごとの別unique identityで重複登録を抑え、同時に実行可能になった場合は既存のprogram単位generation guardで直列化する。
@@ -71,7 +77,7 @@ Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Wo
 5. program-scoped `podcast_consumed_articles` と `podcast_excluded_articles` のどちらにも存在しないentryだけを候補にする。
 6. 番組の除外条件が空でなければ `PodcastNewsExcluder` で候補を判定する。除外判定に成功してexcludeになったentry identityは番組単位でdurable stateへ記録する。判定失敗時は全候補を残す。
 7. 除外後の候補が0件なら新しいepisodeを作らず終了する。
-8. 番組で直近48時間以内に作成された `ARCHIVED` episodeの記事snapshotを参照し、端末内のembeddingでアーカイブと新候補の高類似度グループを求め、通常・既報に分ける。合計24件以内は一括比較とし、超過時は各12件ずつのchunkを最大8回比較する。比較予算超過、失敗、不正分割では候補すべてを通常群として扱う。両群はそれぞれembeddingでクラスタリングし、一括比較時の結果は再利用できる。アーカイブの記事そのものは生成対象に含めない。
+8. 番組で直近72時間以内に作成された `ARCHIVED` episodeの記事snapshotを参照し、端末内のembeddingでアーカイブと新候補の高類似度グループを求め、通常・既報に分ける。合計24件以内は一括比較とし、超過時は各12件ずつのchunkを最大8回比較する。比較予算超過、失敗、不正分割では候補すべてを通常群として扱う。両群はそれぞれembeddingでクラスタリングし、一括比較時の結果は再利用できる。アーカイブの記事そのものは生成対象に含めない。
 9. 通常群・既報群それぞれのclusterごとにfeed categoryから代表カテゴリを決め、feed categoryがないclusterだけAIでカテゴリを補完する。代表カテゴリが同じclusterを連続配置した後に `chapter_position` を再割当てする。各群を独立して最大ニュース数単位で分割し、通常エピソードをすべて先に、既報エピソードを後ろに、一度のtransactionで予約する。既報エピソードは予約時からタイトルに「既報ニュース」を含め、通常エピソードと区別する。cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。カテゴリ名自体はsnapshotしない。新規schemaは追加せず予約時にタイトルを確定することで、生成待ち・中断復旧・再生成後もラベルを維持する。旧予約でタイトルが番組名だけの場合は完成時に日時を補う。
 10. 最初のepisodeを生成し、残りはqueueへ保持する。
 11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論単位として扱う。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、retryableな一時失敗は同じchapter内で2秒・5秒・15秒を基準とするjitter付きbackoffにより最大3回再試行する。再試行を使い切るまではchapterを `FAILED` へ確定しない。ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
@@ -160,7 +166,7 @@ version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除�
 - 除外判定が失敗した場合は候補を捨てず全件includeへfallbackする。
 - episodeへ予約したfeed body、entry URL、cluster境界、分類診断状態は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
-- 新規生成時だけ直近48時間に作成された同番組のアーカイブ済みepisodeを参照し、端末内embeddingの高類似度グループに含まれる候補を既報ニュースとして分ける。同一出来事であることは保証せず、比較失敗・不正partition・予算超過の場合はすべて通常ニュースとして扱う。過去episodeの内容・消費済み状態は変更しない。
+- 新規生成時だけ直近72時間に作成された同番組のアーカイブ済みepisodeを参照し、端末内embeddingの高類似度グループに含まれる候補を既報ニュースとして分ける。同一出来事であることは保証せず、比較失敗・不正partition・予算超過の場合はすべて通常ニュースとして扱う。過去episodeの内容・消費済み状態は変更しない。
 - clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackし、fallback原因の分類状態を保存する。
 - feed categoryの代表選択はcluster単位で出現数を数え、最少出現カテゴリを優先する。同数時のtie-breakとカテゴリgroup順は決定的にする。
 - feed categoryがないclusterのカテゴリ補完失敗は `その他` へfallbackし、記事やclusterを欠落させない。カテゴリ補完へfeed body、entry URL、linked pageを追加しない。

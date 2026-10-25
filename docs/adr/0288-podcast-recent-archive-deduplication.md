@@ -44,3 +44,9 @@ Archive comparison no longer removes matched incoming articles from generation. 
 The bounded comparison budget and fail-open policy remain unchanged: uncertain matches stay in ordinary new episodes. Previously covered articles are consumed on reservation just like new ones; archive reference articles are never copied into new episode snapshots. Each segment is clustered independently using the selected mode, and the same chapter/episode checkpoint and queue lifecycle applies. The category ordering and maximum number of news clusters per episode remain unchanged.
 
 Existing archived episodes, chapter snapshots, rebuilds, and comparison episodes are not repartitioned retroactively. The previous discard policy described above is superseded by this refinement.
+
+## 2026-10-25 refinement: 72-hour archive window and visible diagnostic outcomes
+
+The comparison looks at archived episodes created in the preceding 72 hours rather than 48 hours. The limit continues to use episode creation time, not the moment an episode was archived. The bounded batch comparison and fail-open behavior remain unchanged.
+
+Archive-comparison failures and comparison-budget exhaustion previously produced ordinary-news episodes without a visible indication. A bounded, app-private generation diagnostic history now records fixed-form stage, count, and outcome messages for each program. The screen exposes recent warnings and a per-program history. This is observational cache, not a new generation source of truth: it does not store source article text, URLs, raw inference output, or raw exception messages; it is excluded from the app's logical backup allowlist. Log persistence failure does not abort generation. Historic ADR paragraphs above retain the original decisions at their respective dates.

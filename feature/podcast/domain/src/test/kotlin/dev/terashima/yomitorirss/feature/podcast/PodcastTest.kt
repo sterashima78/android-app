@@ -7,6 +7,7 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -333,7 +334,7 @@ class PodcastTest {
   }
 
   @Test
-  fun `直近48時間のアーカイブで既報を別エピソードに分け新しいニュースを集約する`() = runSuspend {
+  fun `72時間以内のアーカイブで既報を別エピソードに分け新しいニュースを集約する`() = runSuspend {
     val program = program(maxArticlesPerEpisode = 3)
     val repository = FakePodcastRepository(program)
     val now = 5L * 24 * 60 * 60 * 1_000
@@ -341,7 +342,7 @@ class PodcastTest {
       id = "archived",
       programId = program.id,
       title = "既報",
-      createdAtEpochMillis = now - 1_000,
+      createdAtEpochMillis = now - 60L * 60 * 60 * 1_000,
       status = PodcastEpisodeStatus.ARCHIVED,
       articles = listOf(entry("old").toEpisodeArticle()),
     )
@@ -361,8 +362,9 @@ class PodcastTest {
       }
     }
     val generator = RecordingGenerator("原稿")
+    val logs = RecordingPodcastLogStore()
     val useCase = GeneratePodcastEpisodeUseCase(
-      repository, source, generator, nowEpochMillis = { now }, newsClusterer = eventClusterer,
+      repository, source, generator, nowEpochMillis = { now }, newsClusterer = eventClusterer, logStore = logs,
     )
 
     val generated = useCase.generate(program.id) as PodcastGenerationResult.Generated
@@ -374,6 +376,7 @@ class PodcastTest {
     assertEquals(listOf("repeated"), repeated.articles.map { it.articleId })
     assertTrue(repeated.title.contains("既報ニュース"))
     assertEquals(PodcastClusteringStatus.SUCCESS, generated.episode.clusteringStatus)
+    assertTrue(logs.logs.value.any { it.message.contains("既報判定成功") && it.message.contains("既報1記事") })
     assertEquals(PodcastEpisodeStatus.ARCHIVED, repository.episodes.first().status)
     assertEquals(listOf("old"), repository.episodes.first().articles.map { it.articleId })
   }
@@ -499,13 +502,13 @@ class PodcastTest {
   }
 
   @Test
-  fun `48時間より古いアーカイブは重複判定に使用しない`() = runSuspend {
+  fun `72時間より古いアーカイブは重複判定に使用しない`() = runSuspend {
     val program = program()
     val now = 5L * 24 * 60 * 60 * 1_000
     val repository = FakePodcastRepository(program)
     repository.episodes += PodcastEpisode(
       id = "old-archive", programId = program.id, title = "既報",
-      createdAtEpochMillis = now - 2L * 24 * 60 * 60 * 1_000 - 1,
+      createdAtEpochMillis = now - 3L * 24 * 60 * 60 * 1_000 - 1,
       status = PodcastEpisodeStatus.ARCHIVED,
       articles = listOf(entry("old").toEpisodeArticle()),
     )
@@ -555,13 +558,16 @@ class PodcastTest {
         )
       }
     }
+    val logs = RecordingPodcastLogStore()
     val generated = GeneratePodcastEpisodeUseCase(
       repository, FakeFeedContentSource(listOf(entry("new-a"), entry("new-b"))),
-      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer,
+      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer, logStore = logs,
     ).generate(program.id) as PodcastGenerationResult.Generated
 
     assertEquals(listOf("new-a", "new-b"), generated.episode.articles.map { it.articleId })
     assertEquals(2, clusterCalls)
+    assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.WARNING &&
+      it.message.contains("FALLBACK_INFERENCE_ERROR") && it.message.contains("通常ニュース") })
   }
 
   @Test
@@ -624,13 +630,16 @@ class PodcastTest {
       }
     }
 
+    val logs = RecordingPodcastLogStore()
     val generated = GeneratePodcastEpisodeUseCase(
       repository, FakeFeedContentSource(listOf(entry("new"))),
-      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer,
+      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer, logStore = logs,
     ).generate(program.id) as PodcastGenerationResult.Generated
 
     assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
     assertEquals(listOf(listOf("new")), requests)
+    assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.WARNING &&
+      it.message.contains("比較予算を超過") })
   }
 
   @Test
@@ -1241,4 +1250,14 @@ private fun runSuspend(block: suspend () -> Unit) {
     override fun resumeWith(value: Result<Unit>) { result = value }
   })
   result?.getOrThrow() ?: error("suspending test did not complete synchronously")
+}
+
+private class RecordingPodcastLogStore : PodcastGenerationLogStore {
+  override val logs = MutableStateFlow<List<PodcastGenerationLog>>(emptyList())
+  override fun record(log: PodcastGenerationLog) {
+    logs.value = listOf(log) + logs.value
+  }
+  override fun clear(programId: String) {
+    logs.value = logs.value.filterNot { it.programId == programId }
+  }
 }
