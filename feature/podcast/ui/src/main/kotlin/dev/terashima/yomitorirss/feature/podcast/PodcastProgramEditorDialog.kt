@@ -263,7 +263,6 @@ internal fun PodcastProgramEditorDialog(
                 name,
                 selectedSourceIds,
                 provider,
-                clusteringMode,
                 exclusionPrompt,
                 scheduleEnabled,
                 requireNotNull(parsedHour),
