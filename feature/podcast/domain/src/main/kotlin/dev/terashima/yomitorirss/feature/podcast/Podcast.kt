@@ -20,11 +20,6 @@ enum class PodcastGenerationProvider { LOCAL, CLOUD }
 
 enum class PodcastClusteringMode { EVENT, TOPIC }
 
-fun PodcastClusteringMode.alternative(): PodcastClusteringMode = when (this) {
-  PodcastClusteringMode.EVENT -> PodcastClusteringMode.TOPIC
-  PodcastClusteringMode.TOPIC -> PodcastClusteringMode.EVENT
-}
-
 data class PodcastSchedule(
   val enabled: Boolean = false,
   val hour: Int = 7,
@@ -56,7 +51,7 @@ data class PodcastProgram(
   val schedule: PodcastSchedule = PodcastSchedule(),
   val maxArticlesPerEpisode: Int = 12,
   val exclusionPrompt: String = "",
-  val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
+  val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.TOPIC,
 ) {
   init {
     require(id.isNotBlank()) { "program id must not be blank" }
@@ -123,7 +118,7 @@ data class PodcastEpisode(
   val script: String? = null,
   val errorMessage: String? = null,
   val clusteringStatus: PodcastClusteringStatus? = null,
-  val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
+  val clusteringMode: PodcastClusteringMode = PodcastClusteringMode.TOPIC,
   val lastPlayedChapter: Int? = null,
 ) {
   fun chapterGroups(): List<List<PodcastEpisodeArticle>> = articles
