@@ -25,7 +25,7 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "schedule_minute INTEGER NOT NULL DEFAULT 0," +
       "max_articles INTEGER NOT NULL DEFAULT 12," +
       "exclusion_prompt TEXT NOT NULL DEFAULT ''," +
-      "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'" +
+      "clustering_mode TEXT NOT NULL DEFAULT 'TOPIC'" +
       ")",
   )
   db.execSQL(
@@ -38,7 +38,7 @@ private fun createPodcastSchema(db: SQLiteDatabase) {
       "script TEXT," +
       "error_message TEXT," +
       "clustering_status TEXT," +
-      "clustering_mode TEXT NOT NULL DEFAULT 'EVENT'," +
+      "clustering_mode TEXT NOT NULL DEFAULT 'TOPIC'," +
       "last_played_chapter INTEGER" +
       ")",
   )
