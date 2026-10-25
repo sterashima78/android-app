@@ -101,4 +101,3 @@ fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
   "$programName / ${EPISODE_TITLE_FORMATTER.format(Instant.ofEpochMilli(createdAtEpochMillis).atZone(ZoneId.systemDefault()))}"
 
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
-private const val PODCAST_TARGET_SCRIPT_CHARS = 3_000
