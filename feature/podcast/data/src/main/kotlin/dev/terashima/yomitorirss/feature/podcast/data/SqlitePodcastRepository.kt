@@ -474,56 +474,12 @@ class SqlitePodcastRepository(
           putNull("error_message")
           putNull("last_played_chapter")
           put("clustering_status", clusteringStatus.name)
+          put("clustering_mode", PodcastClusteringMode.TOPIC.name)
         },
         "id=?",
         arrayOf(episodeId),
       )
       require(updated == 1) { "episode not found: $episodeId" }
-    }
-    return requireNotNull(findEpisode(episodeId))
-  }
-
-  override suspend fun reserveComparisonEpisode(
-    program: PodcastProgram,
-    candidates: List<PodcastFeedEntry>,
-    createdAtEpochMillis: Long,
-    clusteringStatus: PodcastClusteringStatus,
-  ): PodcastEpisode {
-    require(candidates.isNotEmpty()) { "comparison requires article snapshot" }
-    val episodeId = UUID.randomUUID().toString()
-    database.transaction {
-      insertOrThrow(
-        "podcast_episodes",
-        null,
-        ContentValues().apply {
-          put("id", episodeId)
-          put("program_id", program.id)
-          put("title", program.name)
-          put("created_at", createdAtEpochMillis)
-          put("status", PodcastEpisodeStatus.GENERATING.name)
-          put("clustering_status", clusteringStatus.name)
-          put("clustering_mode", program.clusteringMode.name)
-        },
-      )
-      candidates.forEachIndexed { index, article ->
-        insertOrThrow(
-          "podcast_episode_articles",
-          null,
-          ContentValues().apply {
-            put("episode_id", episodeId)
-            put("position", index)
-            put("chapter_position", article.chapterPosition ?: index)
-            put("article_id", article.articleId)
-            put("feed_id", article.feedId)
-            put("title", article.title)
-            if (article.sourceTitle == null) putNull("source_title") else put("source_title", article.sourceTitle)
-            if (article.publishedAtEpochMillis == null) putNull("published_at") else put("published_at", article.publishedAtEpochMillis)
-            if (article.articleUrl == null) putNull("article_url") else put("article_url", article.articleUrl)
-            put("feed_content", article.feedContent)
-            put("chapter_status", PodcastChapterGenerationStatus.PENDING.name)
-          },
-        )
-      }
     }
     return requireNotNull(findEpisode(episodeId))
   }

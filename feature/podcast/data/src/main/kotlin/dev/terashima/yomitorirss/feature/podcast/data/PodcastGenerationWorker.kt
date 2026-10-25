@@ -21,7 +21,6 @@ import androidx.work.WorkerParameters
 import dev.terashima.yomitorirss.core.aiinference.withAiBackgroundInference
 import dev.terashima.yomitorirss.core.background.CloudAiBackgroundExecutionPreferences
 import dev.terashima.yomitorirss.core.background.LocalAiBackgroundExecutionPreferences
-import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringMode
 import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationAlreadyRunningException
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationController
@@ -86,16 +85,7 @@ class PodcastGenerationWorker(
       try {
         when (operation) {
           PodcastGenerationOperation.SCHEDULED_GENERATE,
-          PodcastGenerationOperation.GENERATE -> generatePodcastEpisode.generate(
-            programId,
-            inputData.getString(KEY_CLUSTERING_MODE)?.let(PodcastClusteringMode::valueOf),
-            onProgress,
-          )
-          PodcastGenerationOperation.COMPARE -> {
-            val episodeId = requireNotNull(inputData.getString(KEY_EPISODE_ID))
-            val mode = PodcastClusteringMode.valueOf(requireNotNull(inputData.getString(KEY_CLUSTERING_MODE)))
-            generatePodcastEpisode.compare(episodeId, mode, onProgress)
-          }
+          PodcastGenerationOperation.GENERATE -> generatePodcastEpisode.generate(programId, onProgress)
           PodcastGenerationOperation.REGENERATE -> {
             val episodeId = inputData.getString(KEY_EPISODE_ID) ?: return Result.failure()
             generatePodcastEpisode.regenerate(episodeId, onProgress)
@@ -178,8 +168,7 @@ class PodcastGenerationWorker(
     const val KEY_PROGRAM_ID = "program_id"
     const val KEY_OPERATION = "operation"
     const val KEY_EPISODE_ID = "episode_id"
-    const val KEY_CLUSTERING_MODE = "clustering_mode"
-    const val KEY_COMPLETED_CHAPTERS = "completed_chapters"
+      const val KEY_COMPLETED_CHAPTERS = "completed_chapters"
     const val KEY_TOTAL_CHAPTERS = "total_chapters"
 
     private const val CHANNEL_ID = "podcast_generation"
@@ -191,7 +180,6 @@ class PodcastGenerationWorker(
 enum class PodcastGenerationOperation {
   SCHEDULED_GENERATE,
   GENERATE,
-  COMPARE,
   REGENERATE,
 }
 
@@ -240,32 +228,22 @@ class WorkManagerPodcastGenerationController(
   }
 
   override fun generate(programId: String) {
-    enqueue(programId, PodcastGenerationOperation.GENERATE, episodeId = null, mode = null)
-  }
-
-  override fun generate(programId: String, mode: PodcastClusteringMode) {
-    enqueue(programId, PodcastGenerationOperation.GENERATE, episodeId = null, mode = mode)
-  }
-
-  override fun compare(programId: String, episodeId: String, mode: PodcastClusteringMode) {
-    enqueue(programId, PodcastGenerationOperation.COMPARE, episodeId, mode)
+    enqueue(programId, PodcastGenerationOperation.GENERATE, episodeId = null)
   }
 
   override fun regenerate(programId: String, episodeId: String) {
-    enqueue(programId, PodcastGenerationOperation.REGENERATE, episodeId, mode = null)
+    enqueue(programId, PodcastGenerationOperation.REGENERATE, episodeId)
   }
 
   private fun enqueue(
     programId: String,
     operation: PodcastGenerationOperation,
     episodeId: String?,
-    mode: PodcastClusteringMode?,
   ) {
     val data = Data.Builder()
       .putString(PodcastGenerationWorker.KEY_PROGRAM_ID, programId)
       .putString(PodcastGenerationWorker.KEY_OPERATION, operation.name)
       .apply { episodeId?.let { putString(PodcastGenerationWorker.KEY_EPISODE_ID, it) } }
-      .apply { mode?.let { putString(PodcastGenerationWorker.KEY_CLUSTERING_MODE, it.name) } }
       .build()
     val request = OneTimeWorkRequestBuilder<PodcastGenerationWorker>()
       .setInputData(data)

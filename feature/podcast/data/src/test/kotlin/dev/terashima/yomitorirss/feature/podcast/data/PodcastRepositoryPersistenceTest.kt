@@ -164,9 +164,9 @@ class PodcastRepositoryPersistenceTest {
   }
 
   @Test
-  fun `同一記事から別モード比較版を作っても消費履歴と原本は維持する`() = runSuspend {
+  fun `old episode mode is readable and explicit rebuild moves to embedding mode`() = runSuspend {
     val source = PodcastSource("source", "ニュース", "https://example.invalid/feed")
-    val program = PodcastProgram("program", "比較番組", setOf(source.id), PodcastGenerationProvider.LOCAL)
+    val program = PodcastProgram("program", "ニュース番組", setOf(source.id), PodcastGenerationProvider.LOCAL)
     repository.saveSource(source)
     repository.saveProgram(program)
     val articles = listOf(
@@ -174,17 +174,18 @@ class PodcastRepositoryPersistenceTest {
       PodcastFeedEntry("article-b", source.id, "記事B", null, 11L, null, "本文B", chapterPosition = 1),
     )
     val original = requireNotNull(repository.reserveEpisode(program, articles, 100L))
-    val comparison = repository.reserveComparisonEpisode(
-      program.copy(clusteringMode = PodcastClusteringMode.TOPIC),
+    database.writableDatabase.execSQL(
+      "UPDATE podcast_episodes SET clustering_mode='EVENT',status='READY' WHERE id=?",
+      arrayOf(original.id),
+    )
+    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode(original.id)?.clusteringMode)
+    val rebuilt = repository.prepareEpisodeRebuild(
+      original.id,
       articles.map { it.copy(chapterPosition = 0) },
-      200L,
       PodcastClusteringStatus.SUCCESS,
     )
-    assertTrue(original.id != comparison.id)
-    assertEquals(PodcastClusteringMode.EVENT, repository.findEpisode(original.id)?.clusteringMode)
-    assertEquals(PodcastClusteringMode.TOPIC, repository.findEpisode(comparison.id)?.clusteringMode)
-    assertEquals(listOf(0, 0), comparison.articles.map { it.chapterPosition })
-    assertEquals(listOf(0, 1), repository.findEpisode(original.id)?.articles?.map { it.chapterPosition })
+    assertEquals(PodcastClusteringMode.TOPIC, rebuilt.clusteringMode)
+    assertEquals(listOf(0, 0), rebuilt.articles.map { it.chapterPosition })
     val filter = SqlitePodcastCandidateFilter(DatabaseConnection(database))
     assertTrue(filter.availableEntries(program.id, articles).isEmpty())
   }

@@ -34,7 +34,7 @@ class PodcastGenerationWorkerTest {
   @Test
   fun `手動生成operationを判別する`() {
     assertEquals(PodcastGenerationOperation.GENERATE, podcastGenerationOperation("GENERATE"))
-    assertEquals(PodcastGenerationOperation.COMPARE, podcastGenerationOperation("COMPARE"))
+    assertNull(podcastGenerationOperation("COMPARE"))
     assertEquals(PodcastGenerationOperation.REGENERATE, podcastGenerationOperation("REGENERATE"))
   }
 
@@ -46,7 +46,6 @@ class PodcastGenerationWorkerTest {
   @Test
   fun `手動生成と作り直しはforegroundへ昇格する`() {
     assertTrue(shouldUsePodcastGenerationForeground(PodcastGenerationOperation.GENERATE))
-    assertTrue(shouldUsePodcastGenerationForeground(PodcastGenerationOperation.COMPARE))
     assertTrue(shouldUsePodcastGenerationForeground(PodcastGenerationOperation.REGENERATE))
   }
 

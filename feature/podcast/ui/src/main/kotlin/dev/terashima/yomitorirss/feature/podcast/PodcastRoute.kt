@@ -33,7 +33,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
@@ -110,8 +109,6 @@ fun PodcastRoute(
         onTopicSimilarityThresholdChange = viewModel::updateTopicSimilarityThreshold,
         onShowArchived = viewModel::setShowArchivedEpisodes,
         onGenerate = viewModel::generate,
-        onGenerateAlternative = viewModel::generateAlternative,
-        onCompareAlternative = viewModel::compareAlternative,
         onEdit = { program ->
           editorProgram = program
           editorVisible = true
@@ -135,8 +132,8 @@ fun PodcastRoute(
       onAddSource = viewModel::saveSource,
       onDeleteSource = viewModel::deleteSource,
       onDismiss = { editorVisible = false },
-      onSave = { id, name, sourceIds, provider, mode, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles ->
-        viewModel.saveProgram(id, name, sourceIds, provider, mode, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles)
+      onSave = { id, name, sourceIds, provider, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles ->
+        viewModel.saveProgram(id, name, sourceIds, provider, exclusionPrompt, scheduleEnabled, hour, minute, maxArticles)
         editorVisible = false
       },
     )
@@ -188,8 +185,6 @@ private fun PodcastContent(
   onTopicSimilarityThresholdChange: (Double) -> Unit,
   onShowArchived: (Boolean) -> Unit,
   onGenerate: (String) -> Unit,
-  onGenerateAlternative: (String) -> Unit,
-  onCompareAlternative: (String) -> Unit,
   onEdit: (PodcastProgram) -> Unit,
   onDelete: (PodcastProgram) -> Unit,
   onPlay: (PodcastEpisode) -> Unit,
@@ -238,7 +233,6 @@ private fun PodcastContent(
         hasQueuedEpisode = oldestQueuedEpisodeId != null,
         sourceCount = program.sourceIds.size,
         onGenerate = { onGenerate(program.id) },
-        onGenerateAlternative = { onGenerateAlternative(program.id) },
         onEdit = { onEdit(program) },
         onDelete = { onDelete(program) },
       )
@@ -279,7 +273,6 @@ private fun PodcastContent(
             onStartQueued = { onGenerate(program.id) },
             onPlay = { onPlay(episode) },
             onRetry = { onRetry(episode.id) },
-            onCompareAlternative = { onCompareAlternative(episode.id) },
             onArchive = { onArchiveEpisode(episode.id) },
             onRestore = { onRestoreEpisode(episode.id) },
             onDelete = { onDeleteEpisode(episode) },
@@ -304,7 +297,7 @@ private fun TopicSimilarityThresholdCard(
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text("関連トピックの類似度しきい値", style = MaterialTheme.typography.titleMedium)
       Text(
-        "全番組共通の試験設定です。値を高くするほど異なるニュースをまとめにくくなります。",
+        "全番組共通の設定です。値を高くするほど異なるニュースをまとめにくくなります。",
         style = MaterialTheme.typography.bodySmall,
       )
       Text("しきい値: ${"%.2f".format(Locale.ROOT, displayed)}")
@@ -324,7 +317,7 @@ private fun TopicSimilarityThresholdCard(
         onClick = { onUpdate(DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD) },
         enabled = displayed != DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD,
       ) {
-        Text("既定値 (0.78) に戻す")
+        Text("既定値 (0.95) に戻す")
       }
       Text(
         "新しく分類するエピソードに反映されます。保存済みエピソードは「現在の条件で作り直す」で再評価できます。",
@@ -341,7 +334,6 @@ private fun ProgramCard(
   hasQueuedEpisode: Boolean,
   sourceCount: Int,
   onGenerate: () -> Unit,
-  onGenerateAlternative: () -> Unit,
   onEdit: () -> Unit,
   onDelete: () -> Unit,
 ) {
@@ -354,7 +346,6 @@ private fun ProgramCard(
             "${sourceCount}ソース・${if (program.provider == PodcastGenerationProvider.LOCAL) "ローカルAI" else "クラウドAI"}",
             style = MaterialTheme.typography.bodyMedium,
           )
-          Text("既定: ${podcastClusteringModeLabel(program.clusteringMode)}", style = MaterialTheme.typography.bodySmall)
           if (program.exclusionPrompt.isNotBlank()) {
             Text("除外条件あり", style = MaterialTheme.typography.bodySmall)
           }
@@ -378,14 +369,11 @@ private fun ProgramCard(
         } else {
           Icon(Icons.Default.Refresh, contentDescription = null)
           Spacer(Modifier.width(8.dp))
-          Text(if (hasQueuedEpisode) "生成待ちのエピソードを開始" else "既定モードで生成")
+          Text(if (hasQueuedEpisode) "生成待ちのエピソードを開始" else "エピソードを生成")
         }
       }
-      OutlinedButton(onClick = onGenerateAlternative, enabled = !generating && !hasQueuedEpisode, modifier = Modifier.fillMaxWidth()) {
-        Text("別モード（${podcastClusteringModeLabel(program.clusteringMode.alternative())}）で生成")
-      }
       if (hasQueuedEpisode) {
-        Text("生成待ちを先に処理してください。完成済みエピソードからも比較できます。", style = MaterialTheme.typography.bodySmall)
+        Text("生成待ちのエピソードを先に処理してください。", style = MaterialTheme.typography.bodySmall)
       }
     }
   }
@@ -400,7 +388,6 @@ private fun EpisodeCard(
   onStartQueued: () -> Unit,
   onPlay: () -> Unit,
   onRetry: () -> Unit,
-  onCompareAlternative: () -> Unit,
   onArchive: () -> Unit,
   onRestore: () -> Unit,
   onDelete: () -> Unit,
@@ -409,7 +396,7 @@ private fun EpisodeCard(
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text(episode.title, style = MaterialTheme.typography.titleMedium)
       Text(
-        "${formatEpisodeTime(episode.createdAtEpochMillis)}・${episode.articles.size}記事・${podcastClusteringModeLabel(episode.clusteringMode)}",
+        "${formatEpisodeTime(episode.createdAtEpochMillis)}・${episode.articles.size}記事",
         style = MaterialTheme.typography.bodySmall,
       )
       podcastClusteringStatusMessage(episode.clusteringStatus)?.let { warning ->
@@ -426,9 +413,6 @@ private fun EpisodeCard(
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(if (busy) "処理中" else "現在の条件で作り直す")
-          }
-          OutlinedButton(onClick = onCompareAlternative, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-            Text("同じ記事から別モードの比較版を生成")
           }
           Row(
             modifier = Modifier.fillMaxWidth(),
@@ -502,11 +486,6 @@ internal fun podcastClusteringStatusMessage(status: PodcastClusteringStatus?): S
   PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR -> "分類処理に失敗したため、記事を1件ずつ分けました"
   PodcastClusteringStatus.FALLBACK_INVALID_OUTPUT -> "分類結果が不正だったため、記事を1件ずつ分けました"
   PodcastClusteringStatus.SUCCESS, PodcastClusteringStatus.SKIPPED, null -> null
-}
-
-private fun podcastClusteringModeLabel(mode: PodcastClusteringMode): String = when (mode) {
-  PodcastClusteringMode.EVENT -> "出来事単位"
-  PodcastClusteringMode.TOPIC -> "関連トピック単位"
 }
 
 

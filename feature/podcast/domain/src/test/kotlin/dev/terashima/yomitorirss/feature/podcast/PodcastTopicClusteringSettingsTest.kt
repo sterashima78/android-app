@@ -6,6 +6,11 @@ import org.junit.Test
 
 class PodcastTopicClusteringSettingsTest {
   @Test
+  fun `default threshold is 0_95`() {
+    assertEquals(0.95, DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD, 0.0)
+  }
+
+  @Test
   fun `threshold is normalized to hundredths`() {
     assertEquals(0.78, normalizePodcastTopicSimilarityThreshold(0.78), 0.0)
     assertEquals(0.89, normalizePodcastTopicSimilarityThreshold(0.894), 0.0)

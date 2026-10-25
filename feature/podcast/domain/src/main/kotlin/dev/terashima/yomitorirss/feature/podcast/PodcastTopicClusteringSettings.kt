@@ -3,11 +3,11 @@ package dev.terashima.yomitorirss.feature.podcast
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.StateFlow
 
-const val DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD = 0.78
+const val DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD = 0.95
 const val MIN_PODCAST_TOPIC_SIMILARITY_THRESHOLD = 0.70
 const val MAX_PODCAST_TOPIC_SIMILARITY_THRESHOLD = 0.99
 
-/** A device-wide tuning parameter for experimental embedding-based topic clustering. */
+/** A device-wide tuning parameter for embedding-based topic clustering. */
 interface PodcastTopicClusteringSettings {
   val similarityThreshold: StateFlow<Double>
 

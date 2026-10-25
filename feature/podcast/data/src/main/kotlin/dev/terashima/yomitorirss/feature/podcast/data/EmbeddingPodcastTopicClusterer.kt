@@ -10,7 +10,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusteringResult
 import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
 
-/** Experimental topic grouping; related but distinct events may share a chapter. */
+/** Embedding-based news grouping; related but distinct events may share a chapter. */
 class EmbeddingPodcastTopicClusterer(
   private val embedding: BackgroundTextEmbedding,
   private val similarityThreshold: () -> Double = { DEFAULT_PODCAST_TOPIC_SIMILARITY_THRESHOLD },

@@ -32,7 +32,7 @@ RSS data moduleは既存のHTTP transportとRSS / Atom parserを再利用する�
 
 Podcast側では取得したentryを `sourceId:feedEntryIdentity` 形式のstable identityへ変換する。別entry identityはタイトルが一致しても縮約せず、各配信元のentryとfeed categoryを保持する。その後の同一ニュース判定はPodcast domainの `PodcastNewsClusterer` が担当する。
 
-従来の出来事単位モードで利用する `PodcastNewsClusterer` は候補のtitle、source title、published timeだけから「同じ具体的な出来事」を表すentry index群と分類状態を返す。候補全体を相互比較し、titleの語順、翻訳、言い換え、表現の強弱が異なっても主要な主体・行為または決定・対象が一致して同一出来事を指す場合は同じclusterとする。候補位置、source title、published timeは補助情報であり、それだけを理由に分割しない。同じ主体を扱うだけの別イベントは統合せず、曖昧な場合は別clusterとする。production compositionでは番組で選択された生成providerと同じAI推論基盤を利用するが、原稿生成の `PodcastScriptGenerator` とはdomain capabilityを分離する。分類結果は通常テキストでは受け取らず、provider-neutral `BackgroundAiStructuredTextInference` の `submit_podcast_news_clusters(group_ids)` tool callを利用する。group ID配列は候補記事と同じ順序・同じ要素数を要求し、同じIDを持つindexを同一clusterへまとめる。tool schemaに加えて全候補がちょうど1回含まれることをfeature側で検証し、不正時は1回だけ再生成する。分類推論または最終validationに失敗した場合は1記事1clusterへfallbackする。coroutine cancellationだけはfallbackせず伝播する。分類状態は正常終了、推論失敗fallback、分類出力不正fallback、分類不要を区別し、raw promptやraw response、raw tool argumentsは診断状態へ保持しない。推論失敗と分類出力不正のfallbackはエピソード画面でも理由を表示し、正常終了・分類不要は警告を表示しない。
+ニュースのグループ分けには端末内の文章埋め込みベクトルのみを使う。`PodcastNewsClusterer` は候補全体のコサイン類似度を評価し、complete-linkによる決定的なpartitionと分類状態を返す。入力記事のタイトル・情報源・本文の一部をembeddingへ渡し、記事位置はpartitionの復元にのみ使う。推論失敗または最終validation失敗時は1記事1clusterへfallbackするが、coroutine cancellationは伝播する。分類状態は正常終了、推論失敗fallback、結果不正fallback、分類不要を区別し、モデル入力や埋め込みvectorは永続化しない。
 
 cluster確定後、Podcast domainはcluster内entryのfeed categoryを正規化して和集合にする。feed categoryがないclusterだけは `PodcastNewsCategorizer` へ渡す。production implementationは番組で選択された生成providerと同じstructured inference基盤を使い、cluster内entryのtitle / source titleとfeed categoryから暫定選択した代表カテゴリ名だけを入力する。feed body、entry URL、linked pageはカテゴリ補完へ追加しない。tool resultがニュース数と一致する非空カテゴリ配列として検証できない、または推論に失敗した場合は対象clusterを `その他` へfallbackし、生成全体は失敗させない。
 
@@ -42,15 +42,15 @@ feed由来カテゴリとカテゴリなしclusterへの補完カテゴリを揃
 
 Podcast runtimeは候補選択のために `FeedRepository`、`ArticleRepository`、`feeds` table、`articles` tableを参照しない。
 
-## Experimental topic clustering
+## Embedding-only news clustering
 
-Podcast owns the mode selection as `PodcastClusteringMode`: `EVENT` preserves the structured-inference implementation, and `TOPIC` selects an embedding-based adapter. Program defaults and actual episode modes are separate durable values. Existing rows migrate as `EVENT`; a queued or interrupted episode retains the mode captured at reservation time.
+Podcast uses the embedding-based `PodcastNewsClusterer` for all newly classified episodes and explicit rebuilds. The structured-inference event classifier, per-program mode selector, alternative generation, and comparison generation are removed. Both ordinary and archived-news candidate partitions use the same on-device embedding adapter. The previously-covered classification compares recent archived entries and new candidates under the same strict cosine-similarity threshold; it is a high-similarity heuristic rather than proof of an identical real-world event. Invalid results fail open into fresh news.
 
-The embedding runtime is provider-neutral and resides behind `BackgroundTextEmbedding`, with its Android adapter in `:core:ai-runtime`. It downloads a public model to app-private storage on first use, sends no article text to the network, computes on-device vectors, and releases resources before chapter LLM generation. No vector cache or duplicate content table is introduced. A deterministic complete-link partition with a small maximum cluster size reduces topic chaining and prompt crowding. Its numeric threshold is experimental, not a verified semantic identity boundary.
+The embedding runtime is provider-neutral and resides behind `BackgroundTextEmbedding`, with its Android adapter in `:core:ai-runtime`. It downloads the public model to app-private storage on first use, never sends article text to the network, computes vectors on-device, and releases resources before chapter generation. No vector cache or duplicate content table is introduced. A deterministic complete-link partition with a small maximum group size prevents long similarity chains.
 
-The experimental cosine similarity threshold is a device-wide Podcast-owned setting, shared by all programs using `TOPIC` mode. `PodcastTopicClusteringSettings` exposes its current value to the UI and embedding clusterer; Podcast Data stores a two-decimal value in app-private SharedPreferences. The UI offers 0.70–0.99 at 0.01 increments with 0.78 as the initial default and a reset action. A clustering pass captures its threshold before embedding inference; changes affect later new clustering passes and explicit episode rebuilds, not reserved/interrupted chapter snapshots. Existing `EVENT` behavior is unchanged. The setting is included in the explicit preference backup allowlist; no Podcast database migration is introduced.
+The device-wide `PodcastTopicClusteringSettings` preference is shared by all programs. Podcast Data keeps a two-decimal override in app-private SharedPreferences; 0.95 is the new default, with 0.70–0.99 adjustable in 0.01 increments. The setting is backed up using the existing preference allowlist. A classification pass captures the threshold before inference; changes affect new passes and explicit rebuilds, not reserved/interrupted article and chapter snapshots. Existing user overrides are retained.
 
-Comparison generation passes an episode's saved full article snapshot through the other mode, creates a separate episode row and chapter checkpoints, and never modifies the original or reinserts program-scoped consumed identities. Ordinary feed generation continues to use the consumed identity filter.
+Existing `clustering_mode` columns and stored `EVENT` values remain for read compatibility without a database migration. New episodes and explicit rebuilds are tagged `TOPIC`; existing completed episodes retain their saved chapter partitions and remain playable. Historic program rows marked `EVENT` do not select the removed classifier.
 
 ## Background execution boundary
 
@@ -71,7 +71,7 @@ Podcast UIはPodcast repositoryのpersistence change projectionを購読し、Wo
 5. program-scoped `podcast_consumed_articles` と `podcast_excluded_articles` のどちらにも存在しないentryだけを候補にする。
 6. 番組の除外条件が空でなければ `PodcastNewsExcluder` で候補を判定する。除外判定に成功してexcludeになったentry identityは番組単位でdurable stateへ記録する。判定失敗時は全候補を残す。
 7. 除外後の候補が0件なら新しいepisodeを作らず終了する。
-8. 番組で作成日時が直近48時間以内かつ `ARCHIVED` のepisode記事snapshotをPodcast repositoryから参照し、除外後の候補を同一出来事分類で通常・既報の二群に分ける。合計24件以内は一括比較とし、超過時は各12件ずつのアーカイブ・候補chunkを最大8推論で総当たり比較する。各推論は最大24件とし、分割時は双方をそれぞれ通常分類する。比較予算超過・部分失敗・不正partition時は候補すべてを通常群として扱い、既報群は空とする。出来事モードは一括比較の有効な分類結果を通常群・既報群とも再利用でき、関連トピックモードはそれぞれの群を独立して埋め込み分類する。アーカイブ側の記事はどちらの新しいエピソードにも含めない。
+8. 番組で直近48時間以内に作成された `ARCHIVED` episodeの記事snapshotを参照し、端末内のembeddingでアーカイブと新候補の高類似度グループを求め、通常・既報に分ける。合計24件以内は一括比較とし、超過時は各12件ずつのchunkを最大8回比較する。比較予算超過、失敗、不正分割では候補すべてを通常群として扱う。両群はそれぞれembeddingでクラスタリングし、一括比較時の結果は再利用できる。アーカイブの記事そのものは生成対象に含めない。
 9. 通常群・既報群それぞれのclusterごとにfeed categoryから代表カテゴリを決め、feed categoryがないclusterだけAIでカテゴリを補完する。代表カテゴリが同じclusterを連続配置した後に `chapter_position` を再割当てする。各群を独立して最大ニュース数単位で分割し、通常エピソードをすべて先に、既報エピソードを後ろに、一度のtransactionで予約する。既報エピソードは予約時からタイトルに「既報ニュース」を含め、通常エピソードと区別する。cluster内の全entry metadata、feed body、entry URL、`chapter_position` を `podcast_episode_articles` へ、分類状態を `podcast_episodes.clustering_status` へsnapshotする。同じclusterのrowsは同じ `chapter_position` を持ち、全entryを消費済みにする。カテゴリ名自体はsnapshotしない。新規schemaは追加せず予約時にタイトルを確定することで、生成待ち・中断復旧・再生成後もラベルを維持する。旧予約でタイトルが番組名だけの場合は完成時に日時を補う。
 10. 最初のepisodeを生成し、残りはqueueへ保持する。
 11. episode内のclusterを独立したchapter checkpointとして処理する。clusterの `READY` checkpointは再利用し、未完了clusterだけを1回のAI推論単位として扱う。クラウド生成では未完了chapterを小さい固定上限で有界並列実行し、retryableな一時失敗は同じchapter内で2秒・5秒・15秒を基準とするjitter付きbackoffにより最大3回再試行する。再試行を使い切るまではchapterを `FAILED` へ確定しない。ローカル生成では端末内推論runtimeの単一実行性を維持して順次処理する。
@@ -147,7 +147,7 @@ Podcast-owned tablesは次のとおり。
 
 ## Compatibility baseline
 
-application database versionは42で、更新互換性baselineはversion 41とする。fresh version 42 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnostics、番組・episodeの分類モード、episodeの最終再生チャプター番号を直接含む。旧再生成状態columnは保持しない。
+application database versionは42で、更新互換性baselineはversion 41とする。fresh version 42 schemaはPodcast-owned source、番組の除外条件、除外済みentry identity、記事URL、chapter checkpoint、news cluster position、clustering diagnostics、互換用の番組・episode分類モード列、episodeの最終再生チャプター番号を直接含む。旧再生成状態columnは保持しない。
 
 version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除する。version 38 -> 41 の過去migrationはADR-0285で退役済みであり、current runtimeはversion 40以下のPodcast schemaをcompatibility inputとして参照しない。
 
@@ -160,7 +160,7 @@ version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除�
 - 除外判定が失敗した場合は候補を捨てず全件includeへfallbackする。
 - episodeへ予約したfeed body、entry URL、cluster境界、分類診断状態は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
-- 新規生成時だけ直近48時間に作成された同番組のアーカイブ済みepisodeを参照し、既報と明確に同一の出来事を除く。単なる関連トピックや新しい進展は除外しない。過去episodeの内容・消費済み状態は変更しない。
+- 新規生成時だけ直近48時間に作成された同番組のアーカイブ済みepisodeを参照し、端末内embeddingの高類似度グループに含まれる候補を既報ニュースとして分ける。同一出来事であることは保証せず、比較失敗・不正partition・予算超過の場合はすべて通常ニュースとして扱う。過去episodeの内容・消費済み状態は変更しない。
 - clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackし、fallback原因の分類状態を保存する。
 - feed categoryの代表選択はcluster単位で出現数を数え、最少出現カテゴリを優先する。同数時のtie-breakとカテゴリgroup順は決定的にする。
 - feed categoryがないclusterのカテゴリ補完失敗は `その他` へfallbackし、記事やclusterを欠落させない。カテゴリ補完へfeed body、entry URL、linked pageを追加しない。
@@ -203,3 +203,4 @@ version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除�
 - `docs/adr/0269-podcast-durable-foreground-generation.md`
 - `docs/adr/0278-podcast-feed-category-ordering.md`
 - `docs/adr/0288-podcast-recent-archive-deduplication.md`
+- `docs/adr/0293-podcast-embedding-only-clustering.md`

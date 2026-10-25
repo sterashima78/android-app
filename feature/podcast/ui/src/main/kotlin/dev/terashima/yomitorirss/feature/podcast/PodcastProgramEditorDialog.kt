@@ -71,7 +71,7 @@ internal fun PodcastProgramEditorDialog(
   onAddSource: (String, String) -> Unit,
   onDeleteSource: (String) -> Unit,
   onDismiss: () -> Unit,
-  onSave: (String?, String, Set<String>, PodcastGenerationProvider, PodcastClusteringMode, String, Boolean, Int, Int, Int) -> Unit,
+  onSave: (String?, String, Set<String>, PodcastGenerationProvider, String, Boolean, Int, Int, Int) -> Unit,
 ) {
   var name by remember(program?.id) { mutableStateOf(program?.name.orEmpty()) }
   var selectedSourceIds by remember(program?.id) {
@@ -84,7 +84,6 @@ internal fun PodcastProgramEditorDialog(
   var newSourceName by remember(program?.id) { mutableStateOf("") }
   var newSourceUrl by remember(program?.id) { mutableStateOf("") }
   var provider by remember(program?.id) { mutableStateOf(program?.provider ?: PodcastGenerationProvider.LOCAL) }
-  var clusteringMode by remember(program?.id) { mutableStateOf(program?.clusteringMode ?: PodcastClusteringMode.EVENT) }
   var exclusionPrompt by remember(program?.id) { mutableStateOf(program?.exclusionPrompt.orEmpty()) }
   var scheduleEnabled by remember(program?.id) { mutableStateOf(program?.schedule?.enabled ?: false) }
   var hour by remember(program?.id) { mutableStateOf((program?.schedule?.hour ?: 7).toString()) }
@@ -131,10 +130,7 @@ internal fun PodcastProgramEditorDialog(
           ProviderOption("ローカルAI", PodcastGenerationProvider.LOCAL, provider) { provider = it }
           ProviderOption("クラウドAI", PodcastGenerationProvider.CLOUD, provider) { provider = it }
           HorizontalDivider()
-          Text("既定の分類モード", style = MaterialTheme.typography.titleSmall)
-          ClusteringModeOption("出来事単位（従来方式）", PodcastClusteringMode.EVENT, clusteringMode) { clusteringMode = it }
-          ClusteringModeOption("関連トピック単位（試験運用）", PodcastClusteringMode.TOPIC, clusteringMode) { clusteringMode = it }
-          Text("試験モードは端末内で類似度を計算します。初回は追加モデルの取得が必要です。", style = MaterialTheme.typography.bodySmall)
+          Text("ニュース分類には端末内の文章埋め込みモデルを利用します。初回はモデルの取得が必要です。", style = MaterialTheme.typography.bodySmall)
 
           OutlinedTextField(
             value = exclusionPrompt,
@@ -267,7 +263,6 @@ internal fun PodcastProgramEditorDialog(
                 name,
                 selectedSourceIds,
                 provider,
-                clusteringMode,
                 exclusionPrompt,
                 scheduleEnabled,
                 requireNotNull(parsedHour),
@@ -289,14 +284,6 @@ private fun ProviderOption(
   selected: PodcastGenerationProvider,
   onSelect: (PodcastGenerationProvider) -> Unit,
 ) {
-  Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-    RadioButton(selected = value == selected, onClick = { onSelect(value) })
-    Text(label)
-  }
-}
-
-@Composable
-private fun ClusteringModeOption(label: String, value: PodcastClusteringMode, selected: PodcastClusteringMode, onSelect: (PodcastClusteringMode) -> Unit) {
   Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     RadioButton(selected = value == selected, onClick = { onSelect(value) })
     Text(label)

@@ -106,7 +106,7 @@ class PodcastNewsClusteringTest {
       totalChapters = 1,
     )
 
-    assertTrue(prompt.contains("重複内容を繰り返さず1つ"))
+    assertTrue(prompt.contains("共通部分だけ重複を省き"))
     assertTrue(prompt.contains("本文 a1"))
     assertTrue(prompt.contains("本文 a2"))
   }
@@ -114,7 +114,7 @@ class PodcastNewsClusteringTest {
   @Test
   fun `topic mode prompt preserves distinct events`() {
     val prompt = buildPodcastChapterPrompt(
-      "ニュース", listOf(article("a1", 0), article("a2", 0)), 1, 1, PodcastClusteringMode.TOPIC,
+      "ニュース", listOf(article("a1", 0), article("a2", 0)), 1, 1,
     )
     assertTrue(prompt.contains("同じ出来事とは限りません"))
     assertTrue(prompt.contains("各記事の主要な事実を必ず個別に"))

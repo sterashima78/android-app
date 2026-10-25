@@ -792,45 +792,33 @@ class PodcastTest {
   }
 
   @Test
-  fun `alternative topic mode routes inference and saves actual episode mode`() = runSuspend {
-    val program = program()
+  fun `legacy program settings still generate new episodes with embedding mode`() = runSuspend {
+    val program = program().copy(clusteringMode = PodcastClusteringMode.EVENT)
     val repository = FakePodcastRepository(program)
     val source = FakeFeedContentSource(listOf(entry("a1"), entry("a2")))
     val generator = RecordingGenerator("生成原稿")
-    var legacyCalls = 0
-    var topicCalls = 0
-    val legacy = object : PodcastNewsClusterer {
+    var embeddingCalls = 0
+    val embeddingClusterer = object : PodcastNewsClusterer {
       override suspend fun cluster(
         provider: PodcastGenerationProvider,
         candidates: List<PodcastFeedEntry>,
       ): PodcastNewsClusteringResult {
-        legacyCalls++
-        return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SUCCESS)
-      }
-    }
-    val topic = object : PodcastNewsClusterer {
-      override suspend fun cluster(
-        provider: PodcastGenerationProvider,
-        candidates: List<PodcastFeedEntry>,
-      ): PodcastNewsClusteringResult {
-        topicCalls++
-        return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SUCCESS)
+        embeddingCalls++
+        return PodcastNewsClusteringResult(listOf(listOf(0, 1)), PodcastClusteringStatus.SUCCESS)
       }
     }
     val useCase = GeneratePodcastEpisodeUseCase(
       repository = repository,
       feedContentSource = source,
       scriptGenerator = generator,
-      newsClusterer = legacy,
-      topicClusterer = topic,
+      newsClusterer = embeddingClusterer,
     )
 
-    val generated = useCase.generate(program.id, PodcastClusteringMode.TOPIC)
-      as PodcastGenerationResult.Generated
+    val generated = useCase.generate(program.id) as PodcastGenerationResult.Generated
 
-    assertEquals(0, legacyCalls)
-    assertEquals(1, topicCalls)
+    assertEquals(1, embeddingCalls)
     assertEquals(PodcastClusteringMode.TOPIC, generated.episode.clusteringMode)
+    assertEquals(1, generated.episode.chapterGroups().size)
     assertTrue(generator.prompts.all { it.contains("同じ出来事とは限りません") })
     assertEquals(PodcastClusteringMode.EVENT, program.clusteringMode)
   }

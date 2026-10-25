@@ -16,18 +16,11 @@ fun buildPodcastChapterPrompt(
   articles: List<PodcastEpisodeArticle>,
   chapterNumber: Int,
   totalChapters: Int,
-  mode: PodcastClusteringMode = PodcastClusteringMode.EVENT,
 ): String {
   require(articles.isNotEmpty()) { "articles must not be empty" }
   require(chapterNumber in 1..totalChapters) { "chapterNumber must be within totalChapters" }
-  val targetChars = if (mode == PodcastClusteringMode.TOPIC) {
-    (articles.size * 140).coerceIn(300, 1_800)
-  } else (PODCAST_TARGET_SCRIPT_CHARS / totalChapters).coerceIn(60, 500)
-  val clusteringInstruction = if (mode == PodcastClusteringMode.TOPIC) {
-    "以下は関連するトピックを扱う記事です。同じ出来事とは限りません。異なる出来事・発表・日付・意見は混同せず、各記事の主要な事実を必ず個別に取り上げてください。共通部分だけ重複を省き、関連性をつないで説明してください。"
-  } else {
-    "以下は同じ具体的なニュースを報じた記事です。入力記事だけを根拠に、重複内容を繰り返さず1つの日本語音声チャプターへ統合してください。"
-  }
+  val targetChars = (articles.size * 140).coerceIn(300, 1_800)
+  val clusteringInstruction = "以下は関連するトピックを扱う記事です。同じ出来事とは限りません。異なる出来事・発表・日付・意見は混同せず、各記事の主要な事実を必ず個別に取り上げてください。共通部分だけ重複を省き、関連性をつないで説明してください。"
   val articleText = articles.mapIndexed { index, article ->
     buildString {
       appendLine("記事${index + 1}:")
@@ -108,4 +101,3 @@ fun buildEpisodeTitle(programName: String, createdAtEpochMillis: Long): String =
   "$programName / ${EPISODE_TITLE_FORMATTER.format(Instant.ofEpochMilli(createdAtEpochMillis).atZone(ZoneId.systemDefault()))}"
 
 private val EPISODE_TITLE_FORMATTER = DateTimeFormatter.ofPattern("M/d HH:mm")
-private const val PODCAST_TARGET_SCRIPT_CHARS = 3_000

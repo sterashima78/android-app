@@ -35,8 +35,8 @@ private data class PodcastClusteredCandidates(
 private data class PodcastArchiveComparison(
   val entries: List<PodcastFeedEntry>,
   val repeatedEntries: List<PodcastFeedEntry> = emptyList(),
-  val eventClustering: PodcastNewsClusteringResult? = null,
-  val repeatedEventClustering: PodcastNewsClusteringResult? = null,
+  val clustering: PodcastNewsClusteringResult? = null,
+  val repeatedClustering: PodcastNewsClusteringResult? = null,
 )
 
 class GeneratePodcastEpisodeUseCase(
@@ -45,7 +45,6 @@ class GeneratePodcastEpisodeUseCase(
   private val scriptGenerator: PodcastScriptGenerator,
   private val nowEpochMillis: () -> Long = System::currentTimeMillis,
   private val newsClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
-  private val topicClusterer: PodcastNewsClusterer = SingletonPodcastNewsClusterer,
   private val newsCategorizer: PodcastNewsCategorizer = OtherPodcastNewsCategorizer,
   private val newsExcluder: PodcastNewsExcluder = IncludeAllPodcastNews,
   private val candidateFilter: PodcastCandidateFilter = AllPodcastCandidates,
@@ -55,15 +54,9 @@ class GeneratePodcastEpisodeUseCase(
   suspend fun generate(
     programId: String,
     onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
-  ): PodcastGenerationResult = generate(programId, null, onProgress)
-
-  suspend fun generate(
-    programId: String,
-    modeOverride: PodcastClusteringMode?,
-    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
   ): PodcastGenerationResult = withProgramGeneration(programId) {
     val savedProgram = requireNotNull(repository.findProgram(programId)) { "program not found: $programId" }
-    val program = savedProgram.copy(clusteringMode = modeOverride ?: savedProgram.clusteringMode)
+    val program = savedProgram.copy(clusteringMode = PodcastClusteringMode.TOPIC)
     repository.claimPendingEpisode(programId)?.let { return@withProgramGeneration generateReserved(program, it, onProgress) }
     val sources = repository.listSources().filter { it.id in program.sourceIds }
     require(sources.mapTo(mutableSetOf(), PodcastSource::id) == program.sourceIds) {
@@ -86,9 +79,9 @@ class GeneratePodcastEpisodeUseCase(
     if (exclusion.included.isEmpty()) return@withProgramGeneration PodcastGenerationResult.NoNewArticles
     val compared = compareRecentlyCoveredNews(program, exclusion.included)
     val fresh = compared.entries.takeIf { it.isNotEmpty() }
-      ?.let { clusterCandidates(program, it, compared.eventClustering) }
+      ?.let { clusterCandidates(program, it, compared.clustering) }
     val repeated = compared.repeatedEntries.takeIf { it.isNotEmpty() }
-      ?.let { clusterCandidates(program, it, compared.repeatedEventClustering) }
+      ?.let { clusterCandidates(program, it, compared.repeatedClustering) }
     val reserved = repository.reserveEpisode(
       program = program,
       candidates = fresh?.entries.orEmpty(),
@@ -134,31 +127,13 @@ class GeneratePodcastEpisodeUseCase(
         )
       }
       require(exclusion.included.isNotEmpty()) { "現在の除外条件では再生成対象の記事がありません" }
-      val clustered = clusterCandidates(program.copy(clusteringMode = episode.clusteringMode), exclusion.included)
+      val clustered = clusterCandidates(program, exclusion.included)
       val prepared = repository.prepareEpisodeRebuild(
         episodeId = episode.id,
         candidates = clustered.entries,
         clusteringStatus = clustered.status,
       )
       generateReserved(program, prepared, onProgress)
-    }
-  }
-
-  suspend fun compare(
-    episodeId: String,
-    mode: PodcastClusteringMode,
-    onProgress: suspend (PodcastGenerationProgress) -> Unit = {},
-  ): PodcastGenerationResult.Generated {
-    val original = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
-    return withProgramGeneration(original.programId) {
-      val source = requireNotNull(repository.findEpisode(episodeId)) { "episode not found: $episodeId" }
-      require(source.status == PodcastEpisodeStatus.READY) { "only ready episodes can be compared" }
-      require(source.clusteringMode != mode) { "comparison must use the alternative mode" }
-      val savedProgram = requireNotNull(repository.findProgram(source.programId)) { "program not found" }
-      val program = savedProgram.copy(clusteringMode = mode)
-      val clustered = clusterCandidates(program, source.articles.map(PodcastEpisodeArticle::toFeedEntry))
-      val comparison = repository.reserveComparisonEpisode(program, clustered.entries, nowEpochMillis(), clustered.status)
-      generateReserved(program, comparison, onProgress)
     }
   }
 
@@ -185,7 +160,7 @@ class GeneratePodcastEpisodeUseCase(
     }
   }
 
-  /** Separate past archived coverage using event identity, never broad topical similarity. */
+  /** Separate news with high embedding similarity to recently archived coverage. */
   private suspend fun compareRecentlyCoveredNews(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
@@ -196,7 +171,7 @@ class GeneratePodcastEpisodeUseCase(
     )
     if (recentArchive.isEmpty()) return PodcastArchiveComparison(candidates)
 
-    // A normal-sized comparison retains its complete event partition for reuse below.
+    // A normal-sized comparison retains its complete vector partition for reuse below.
     // Larger inputs are compared in bounded batches without losing archive coverage.
     if (recentArchive.size + candidates.size > MAX_ARCHIVE_COMPARISON_ITEMS) {
       return compareRecentArchiveInBatches(program, recentArchive, candidates)
@@ -241,8 +216,8 @@ class GeneratePodcastEpisodeUseCase(
     return PodcastArchiveComparison(
       entries = newEntries,
       repeatedEntries = repeatedEntries,
-      eventClustering = newClustering,
-      repeatedEventClustering = repeatedClustering,
+      clustering = newClustering,
+      repeatedClustering = repeatedClustering,
     )
   }
 
@@ -296,14 +271,9 @@ class GeneratePodcastEpisodeUseCase(
   private suspend fun clusterCandidates(
     program: PodcastProgram,
     candidates: List<PodcastFeedEntry>,
-    preclassifiedEvents: PodcastNewsClusteringResult? = null,
+    preclassified: PodcastNewsClusteringResult? = null,
   ): PodcastClusteredCandidates {
-    val classifier = if (program.clusteringMode == PodcastClusteringMode.TOPIC) topicClusterer else newsClusterer
-    val result = if (program.clusteringMode == PodcastClusteringMode.EVENT && preclassifiedEvents != null) {
-      preclassifiedEvents
-    } else {
-      classifier.cluster(program.provider, candidates)
-    }
+    val result = preclassified ?: newsClusterer.cluster(program.provider, candidates)
     val groups = result.groups
     require(groups.flatten().toSet() == candidates.indices.toSet() && groups.sumOf { it.size } == candidates.size) {
       "news clusterer must contain every candidate exactly once"
@@ -426,7 +396,7 @@ class GeneratePodcastEpisodeUseCase(
       val group = episode.chapterGroups()[position]
       val chapterScript = scriptGenerator.generate(
         program.provider,
-        buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters, episode.clusteringMode),
+        buildPodcastChapterPrompt(program.name, group, position + 1, totalChapters),
       ).trim()
       require(chapterScript.isNotBlank()) { "generated podcast chapter is blank" }
       repository.completeChapter(episodeId, position, chapterScript)

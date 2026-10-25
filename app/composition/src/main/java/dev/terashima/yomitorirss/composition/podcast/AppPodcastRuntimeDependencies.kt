@@ -17,7 +17,6 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastScheduleController
 import dev.terashima.yomitorirss.feature.podcast.PodcastViewModel
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastCloudTextInference
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsCategorizer
-import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsClusterer
 import dev.terashima.yomitorirss.feature.podcast.data.EmbeddingPodcastTopicClusterer
 import dev.terashima.yomitorirss.feature.podcast.data.PodcastTopicClusteringPreferences
 import dev.terashima.yomitorirss.feature.podcast.data.DefaultPodcastNewsExcluder
@@ -65,13 +64,7 @@ internal class AppPodcastRuntimeDependencies(
       reader = DefaultRssFeedContentReader(database, httpClient),
     ),
     scriptGenerator = scriptGenerator,
-    newsClusterer = DefaultPodcastNewsClusterer(
-      localTextInference = localTextInference,
-      cloudTextInference = cloudTextInference,
-      localStructuredInference = localStructuredTextInference,
-      cloudStructuredInference = cloudStructuredTextInference,
-    ),
-    topicClusterer = EmbeddingPodcastTopicClusterer(LiteRtTextEmbedding(application)) {
+    newsClusterer = EmbeddingPodcastTopicClusterer(LiteRtTextEmbedding(application)) {
       topicClusteringSettings.similarityThreshold.value
     },
     newsCategorizer = DefaultPodcastNewsCategorizer(
