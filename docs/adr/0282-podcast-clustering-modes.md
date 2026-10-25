@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0293](0293-podcast-embedding-only-clustering.md)
 
 ## Context
 
@@ -40,3 +40,4 @@ Accepted
 
 - Refines: ADR-0259, ADR-0263, ADR-0268
 - Refined by: ADR-0288
+- Superseded by: ADR-0293
