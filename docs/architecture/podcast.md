@@ -160,7 +160,7 @@ version 41 -> 42 migrationは `podcast_episodes.regeneration_status` を削除�
 - 除外判定が失敗した場合は候補を捨てず全件includeへfallbackする。
 - episodeへ予約したfeed body、entry URL、cluster境界、分類診断状態は生成時点でsnapshotし、後続のfeed rotationや再生成時の再分類に依存しない。
 - entry URLはAI生成promptへ含めず、linked page本文も取得しない。
-- 新規生成時だけ直近48時間に作成された同番組のアーカイブ済みepisodeを参照し、既報と明確に同一の出来事を除く。単なる関連トピックや新しい進展は除外しない。過去episodeの内容・消費済み状態は変更しない。
+- 新規生成時だけ直近48時間に作成された同番組のアーカイブ済みepisodeを参照し、端末内embeddingの高類似度グループに含まれる候補を既報ニュースとして分ける。同一出来事であることは保証せず、比較失敗・不正partition・予算超過の場合はすべて通常ニュースとして扱う。過去episodeの内容・消費済み状態は変更しない。
 - clustererが正常な完全partitionを返せない場合は1記事1clusterへfallbackし、fallback原因の分類状態を保存する。
 - feed categoryの代表選択はcluster単位で出現数を数え、最少出現カテゴリを優先する。同数時のtie-breakとカテゴリgroup順は決定的にする。
 - feed categoryがないclusterのカテゴリ補完失敗は `その他` へfallbackし、記事やclusterを欠落させない。カテゴリ補完へfeed body、entry URL、linked pageを追加しない。
