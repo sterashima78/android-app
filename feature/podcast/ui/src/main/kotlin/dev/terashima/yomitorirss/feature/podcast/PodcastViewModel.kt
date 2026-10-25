@@ -63,7 +63,7 @@ class PodcastViewModel(
   }
 
   fun clearGenerationLogs(programId: String) {
-    logStore.clear(programId)
+    viewModelScope.launch(Dispatchers.IO) { logStore.clear(programId) }
   }
 
   fun updateTopicSimilarityThreshold(value: Double) {
