@@ -25,6 +25,10 @@ import dev.terashima.yomitorirss.feature.podcast.GeneratePodcastEpisodeUseCase
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationAlreadyRunningException
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationController
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProgress
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationLog
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationLogLevel
+import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationLogStore
+import dev.terashima.yomitorirss.feature.podcast.NoOpPodcastGenerationLogStore
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.core.network.TrafficAttribution
 import kotlinx.coroutines.withContext
@@ -42,6 +46,7 @@ class PodcastGenerationWorker(
   private val repository: PodcastRepository,
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
   private val scheduleController: PodcastScheduleController,
+  private val logStore: PodcastGenerationLogStore = NoOpPodcastGenerationLogStore,
 ) : CoroutineWorker(appContext, params) {
   override suspend fun doWork(): Result = withAiBackgroundInference {
     withContext(TrafficAttribution("podcast")) { runBackgroundWork() }
@@ -94,10 +99,13 @@ class PodcastGenerationWorker(
         scheduleNext = operation == PodcastGenerationOperation.SCHEDULED_GENERATE
         Result.success()
       } catch (error: PodcastGenerationAlreadyRunningException) {
+        logFailure(programId, PodcastGenerationLogLevel.WARNING, "別の生成が実行中のため再試行します")
         Result.retry()
       } catch (error: CancellationException) {
         throw error
-      } catch (_: Throwable) {
+      } catch (error: Throwable) {
+        logFailure(programId, PodcastGenerationLogLevel.ERROR,
+          "生成処理に失敗しました（${error.javaClass.simpleName}）。詳細はエピソードの状態を確認してください")
         // Generation persists episode/chapter failures itself. Scheduled runs still converge to the
         // next local occurrence; manual failures remain observable through Podcast durable state.
         scheduleNext = operation == PodcastGenerationOperation.SCHEDULED_GENERATE
@@ -116,6 +124,10 @@ class PodcastGenerationWorker(
         currentProgram?.let(scheduleController::scheduleNext)
       }
     }
+  }
+
+  private fun logFailure(programId: String, level: PodcastGenerationLogLevel, message: String) {
+    runCatching { logStore.record(PodcastGenerationLog(programId, System.currentTimeMillis(), level, message)) }
   }
 
   private fun createForegroundInfo(
@@ -201,6 +213,7 @@ class PodcastGenerationWorkerFactory(
   private val repository: PodcastRepository,
   private val generatePodcastEpisode: GeneratePodcastEpisodeUseCase,
   private val scheduleController: PodcastScheduleController,
+  private val logStore: PodcastGenerationLogStore = NoOpPodcastGenerationLogStore,
 ) : WorkerFactory() {
   override fun createWorker(
     appContext: Context,
@@ -213,6 +226,7 @@ class PodcastGenerationWorkerFactory(
       repository,
       generatePodcastEpisode,
       scheduleController,
+      logStore,
     )
   } else {
     null
