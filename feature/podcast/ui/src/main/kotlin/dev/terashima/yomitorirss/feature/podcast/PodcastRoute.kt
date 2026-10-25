@@ -335,7 +335,6 @@ private fun ProgramCard(
   hasQueuedEpisode: Boolean,
   sourceCount: Int,
   onGenerate: () -> Unit,
-  onGenerateAlternative: () -> Unit,
   onEdit: () -> Unit,
   onDelete: () -> Unit,
 ) {
@@ -390,7 +389,6 @@ private fun EpisodeCard(
   onStartQueued: () -> Unit,
   onPlay: () -> Unit,
   onRetry: () -> Unit,
-  onCompareAlternative: () -> Unit,
   onArchive: () -> Unit,
   onRestore: () -> Unit,
   onDelete: () -> Unit,
