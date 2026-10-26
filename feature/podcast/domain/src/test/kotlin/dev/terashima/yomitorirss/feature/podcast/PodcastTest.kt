@@ -653,7 +653,7 @@ class PodcastTest {
       reserved.filter { it.title.contains("既報ニュース") }.flatMap { it.articles.map(PodcastEpisodeArticle::articleId) })
     assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.INFO &&
       it.message.contains("既報判定成功（分割比較）") })
-    assertTrue(logs.logs.value.none { it.message.contains("必要65回、上限64回") && it.message.contains("比較予算を超過") })
+    assertTrue(logs.logs.value.none { it.message.contains("比較予算を超過") })
   }
 
   @Test
@@ -686,7 +686,7 @@ class PodcastTest {
     assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
     assertEquals(listOf(listOf("new")), requests)
     assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.WARNING &&
-      it.message.contains("比較予算を超過") })
+      it.message.contains("必要65回、上限64回") && it.message.contains("比較予算を超過") })
   }
 
   @Test
