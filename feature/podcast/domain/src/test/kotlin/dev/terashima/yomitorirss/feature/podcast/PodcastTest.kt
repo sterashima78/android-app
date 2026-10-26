@@ -610,6 +610,53 @@ class PodcastTest {
   }
 
   @Test
+  fun `53件の新規候補を25件のアーカイブと分割比較して既報を分離する`() = runSuspend {
+    val program = program(maxArticlesPerEpisode = 30)
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "過去のニュース",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = (0 until 25).map { entry("old-$it").toEpisodeArticle() },
+    )
+    val fresh = (0 until 52).map { entry("fresh-$it") }
+    val candidates = fresh + entry("repeat-52")
+    val requests = mutableListOf<List<String>>()
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        requests += candidates.map(PodcastFeedEntry::articleId)
+        val archivedIndex = candidates.indexOfFirst { it.articleId == "old-24" }
+        val repeatIndex = candidates.indexOfFirst { it.articleId == "repeat-52" }
+        val matched = if (archivedIndex >= 0 && repeatIndex >= 0) setOf(archivedIndex, repeatIndex) else emptySet()
+        return PodcastNewsClusteringResult(
+          candidates.indices.filterNot { it in matched }.map { listOf(it) } +
+            if (matched.isNotEmpty()) listOf(listOf(archivedIndex, repeatIndex)) else emptyList(),
+          PodcastClusteringStatus.SUCCESS,
+        )
+      }
+    }
+    val logs = RecordingPodcastLogStore()
+    GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(candidates), RecordingGenerator("原稿"),
+      nowEpochMillis = { now }, newsClusterer = clusterer, logStore = logs,
+    ).generate(program.id)
+
+    assertEquals(17, requests.size) // 3 archive chunks x 5 candidate chunks, then two independent partitions.
+    assertTrue(requests.take(15).all { it.size <= 24 })
+    val reserved = repository.episodes.filter { it.id != "archive" }
+    assertEquals(fresh.map(PodcastFeedEntry::articleId),
+      reserved.filterNot { it.title.contains("既報ニュース") }.flatMap { it.articles.map(PodcastEpisodeArticle::articleId) })
+    assertEquals(listOf("repeat-52"),
+      reserved.filter { it.title.contains("既報ニュース") }.flatMap { it.articles.map(PodcastEpisodeArticle::articleId) })
+    assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.INFO &&
+      it.message.contains("既報判定成功（分割比較）") })
+    assertTrue(logs.logs.value.none { it.message.contains("比較予算を超過") })
+  }
+
+  @Test
   fun `比較予算超過時は既報除外を省略して新着を保持する`() = runSuspend {
     val program = program()
     val repository = FakePodcastRepository(program)
@@ -617,7 +664,7 @@ class PodcastTest {
     repository.episodes += PodcastEpisode(
       id = "archive", programId = program.id, title = "既報",
       createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
-      articles = (0 until 97).map { entry("old-$it").toEpisodeArticle() },
+      articles = (0 until 769).map { entry("old-$it").toEpisodeArticle() },
     )
     val requests = mutableListOf<List<String>>()
     val clusterer = object : PodcastNewsClusterer {
@@ -639,7 +686,7 @@ class PodcastTest {
     assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
     assertEquals(listOf(listOf("new")), requests)
     assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.WARNING &&
-      it.message.contains("比較予算を超過") })
+      it.message.contains("必要65回、上限64回") && it.message.contains("比較予算を超過") })
   }
 
   @Test

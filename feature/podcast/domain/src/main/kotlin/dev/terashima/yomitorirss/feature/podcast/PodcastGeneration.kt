@@ -260,11 +260,10 @@ class GeneratePodcastEpisodeUseCase(
     val candidateBatches = candidates.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
     // Never launch an unbounded series of model calls merely to eliminate repeats.
     // When the comparison budget is exceeded, fail open and retain all new entries.
-    if (candidateBatches.size > MAX_ARCHIVE_COMPARISON_CALLS ||
-      archiveBatches.size > MAX_ARCHIVE_COMPARISON_CALLS / candidateBatches.size
-    ) {
+    val requiredComparisons = archiveBatches.size.toLong() * candidateBatches.size
+    if (requiredComparisons > MAX_ARCHIVE_COMPARISON_CALLS) {
       log(program.id, PodcastGenerationLogLevel.WARNING,
-        "既報判定を省略: 最大8回の比較予算を超過。全候補を通常ニュースとして扱います")
+        "既報判定を省略: 必要${requiredComparisons}回、上限${MAX_ARCHIVE_COMPARISON_CALLS}回の比較予算を超過。全候補を通常ニュースとして扱います")
       return PodcastArchiveComparison(candidates)
     }
 
@@ -493,4 +492,4 @@ private const val RECENT_PODCAST_ARCHIVE_MILLIS = 3L * 24 * 60 * 60 * 1_000
 
 private const val MAX_ARCHIVE_COMPARISON_ITEMS = 24
 private const val ARCHIVE_COMPARISON_BATCH_SIZE = 12
-private const val MAX_ARCHIVE_COMPARISON_CALLS = 8
+private const val MAX_ARCHIVE_COMPARISON_CALLS = 64
