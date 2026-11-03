@@ -21,6 +21,7 @@ class DefaultWidgetRepository(
   private val onReadLaterSaved: ((Article) -> Unit)? = null,
   private val automaticIntervalMinutes: () -> Long = { 60L },
   private val failureRetryIntervalMinutes: () -> Long = { 5L },
+  private val isWifiConnected: () -> Boolean = { true },
 ) : WidgetRepository {
   override fun listUnreadArticles(): List<WidgetArticle> = runBlocking {
     articleRepository.listUnreadArticles()
@@ -67,7 +68,9 @@ class DefaultWidgetRepository(
     val minimumAgeMillis = automaticIntervalMinutes() * 60_000L
     val failureRetryMillis = failureRetryIntervalMinutes() * 60_000L
     refreshWidgetFeeds(feedRepository.listFeeds().filter { sourceSelector(it.feedUrl) }) { feed ->
-      if (force) feedRepository.refreshFeed(feed)
+      if (force) {
+        if (!feed.manualWifiOnly || isWifiConnected()) feedRepository.refreshFeed(feed)
+      }
       else feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
     }
   }
