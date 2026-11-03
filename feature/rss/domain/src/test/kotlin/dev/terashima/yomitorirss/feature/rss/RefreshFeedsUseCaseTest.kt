@@ -87,6 +87,46 @@ class RefreshFeedsUseCaseTest {
   }
 
   @Test
+  fun `手動更新はWi-Fi未接続なら制限対象だけをスキップする`() = runBlocking {
+    val repository = RecordingFeedRepository()
+    val useCase = RefreshFeedsUseCase(repository, maxConcurrency = 1, isWifiConnected = { false })
+    val result = useCase(
+      listOf(feed("1").copy(manualWifiOnly = true), feed("2")),
+      mode = FeedRefreshMode.FORCE,
+    )
+
+    assertEquals(RefreshFeedsResult(total = 2, failures = 0, wifiSkipped = 1), result)
+    assertEquals(listOf("2"), repository.refreshedFeedIds)
+  }
+
+  @Test
+  fun `Wi-Fi接続時は制限対象のフィードも手動取得する`() = runBlocking {
+    val repository = RecordingFeedRepository()
+    val useCase = RefreshFeedsUseCase(repository, isWifiConnected = { true })
+
+    val result = useCase(listOf(feed("1").copy(manualWifiOnly = true)), mode = FeedRefreshMode.FORCE)
+
+    assertEquals(RefreshFeedsResult(total = 1, failures = 0), result)
+    assertEquals(listOf("1"), repository.refreshedFeedIds)
+  }
+
+  @Test
+  fun `自動更新とインポートは手動Wi-Fi設定に影響されない`() = runBlocking {
+    val repository = RecordingFeedRepository()
+    val useCase = RefreshFeedsUseCase(repository, isWifiConnected = { false })
+    val restricted = feed("1").copy(manualWifiOnly = true)
+
+    val auto = useCase(listOf(restricted), mode = FeedRefreshMode.AUTOMATIC)
+    val scheduled = useCase(listOf(restricted), mode = FeedRefreshMode.SCHEDULED)
+    val imported = useCase(listOf(restricted), mode = FeedRefreshMode.IMPORT)
+
+    assertEquals(0, auto.wifiSkipped)
+    assertEquals(0, scheduled.wifiSkipped)
+    assertEquals(0, imported.wifiSkipped)
+    assertEquals(listOf("1", "1", "1"), repository.refreshedFeedIds)
+  }
+
+  @Test
   fun `バックグラウンド更新間隔は画面更新間隔とは独立`() = runBlocking {
     val repository = RecordingFeedRepository()
     val useCase = RefreshFeedsUseCase(
