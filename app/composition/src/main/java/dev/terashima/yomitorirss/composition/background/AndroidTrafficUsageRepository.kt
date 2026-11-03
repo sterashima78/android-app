@@ -13,8 +13,8 @@ import dev.terashima.yomitorirss.feature.settings.RssFeedTrafficRecord
 import dev.terashima.yomitorirss.feature.settings.TrafficUsageOverview
 import dev.terashima.yomitorirss.feature.settings.TrafficUsageReader
 import dev.terashima.yomitorirss.feature.settings.TrafficUsageRecord
+import dev.terashima.yomitorirss.feature.settings.TrafficUsageTime
 import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * Privacy-preserving, bounded counters. No destination, user identifier or request body is stored.
@@ -30,11 +30,11 @@ internal class AndroidTrafficUsageRepository(
   @Synchronized
   fun record(transfer: TrafficTransfer) {
     val feature = transfer.tag.takeIf { it in KNOWN_FEATURES } ?: "other"
-    val date = LocalDate.now().toString()
+    val now = System.currentTimeMillis()
+    val date = TrafficUsageTime.dateAt(now).toString()
     val transport = currentTransport()
     val key = "$date|$feature|$transport"
     val previous = decode(preferences.getString(key, null))
-    val now = System.currentTimeMillis()
     val editor = preferences.edit()
       .putString(key, "${previous.first + transfer.receivedBytes},${previous.second + transfer.sentBytes}")
     val resource = transfer.resource
@@ -83,17 +83,18 @@ internal class AndroidTrafficUsageRepository(
 
   override fun read(days: Int): TrafficUsageOverview {
     require(days in 1..MAX_DAYS)
-    val start = LocalDate.now().minusDays(days.toLong() - 1)
+    val now = System.currentTimeMillis()
+    val start = TrafficUsageTime.dateAt(now).minusDays(days.toLong() - 1)
     val records = savedRecords(start.toString())
     val titles = runCatching(feedTitleResolver).getOrDefault(emptyMap())
     val feedRecords = savedFeedRecords(start.toString()).map { record ->
       record.copy(feedTitle = titles[record.feedId])
     }
     val from = maxOf(
-      start.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli(),
+      TrafficUsageTime.startOfDayMillis(start),
       preferences.getLong(FIRST_RECORD_MILLIS, Long.MAX_VALUE),
     )
-    val until = System.currentTimeMillis()
+    val until = now
     return TrafficUsageOverview(
       records = records,
       feedRecords = feedRecords,
