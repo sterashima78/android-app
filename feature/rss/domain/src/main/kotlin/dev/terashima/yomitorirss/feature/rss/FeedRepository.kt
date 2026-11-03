@@ -18,6 +18,9 @@ interface FeedRepository {
   suspend fun deleteFolder(folderId: String)
   suspend fun moveFeedToFolder(feedId: String, folderId: String?)
   suspend fun setFeedContentType(feedId: String, contentType: ContentType?)
+  suspend fun setFeedManualWifiOnly(feedId: String, enabled: Boolean) {
+    error("Manual Wi-Fi restriction is not supported")
+  }
   suspend fun setFeedRefreshInterval(feedId: String, minutes: Long?) {
     error("Individual refresh interval is not supported")
   }
