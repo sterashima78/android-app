@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -30,6 +31,7 @@ internal fun TrafficUsageDialog(reader: TrafficUsageReader, onDismiss: () -> Uni
   var transport by remember { mutableStateOf("mobile") }
   var overview by remember { mutableStateOf<TrafficUsageOverview?>(null) }
   var error by remember { mutableStateOf(false) }
+  var expandedDate by remember { mutableStateOf<String?>(null) }
 
   LaunchedEffect(reader, days) {
     overview = null
@@ -37,6 +39,8 @@ internal fun TrafficUsageDialog(reader: TrafficUsageReader, onDismiss: () -> Uni
     val result = withContext(Dispatchers.IO) { runCatching { reader.read(days) } }
     result.onSuccess { overview = it }.onFailure { error = true }
   }
+
+  LaunchedEffect(days, transport) { expandedDate = null }
 
   AlertDialog(
     onDismissRequest = onDismiss,
@@ -47,7 +51,7 @@ internal fun TrafficUsageDialog(reader: TrafficUsageReader, onDismiss: () -> Uni
         modifier = Modifier.fillMaxWidth().heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(10.dp),
       ) {
-        Text("記録開始以降の通信量です。通信本文のみの概算であり、OSの通信量と一致しません。")
+        Text("通信量は日本時間（JST、UTC+9）の日付で記録します。通信本文のみの概算であり、OSの通信量と一致しません。")
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
           listOf(7, 30, 90).forEach { option ->
             FilterChip(
@@ -121,16 +125,44 @@ internal fun TrafficUsageDialog(reader: TrafficUsageReader, onDismiss: () -> Uni
               }
               Text("フィード別の数値は通常RSS/Atom取得の受信本文のみです。WebViewスクレイピングは対象外です。")
             }
-            Text("日別の記録")
-            visible.groupBy(TrafficUsageRecord::date)
-              .mapValues { (_, rows) -> rows.sumOf(TrafficUsageRecord::totalBytes) }
-              .toList().sortedByDescending { it.first }
-              .forEach { (date, bytes) ->
+            Text("日別の記録（JST・日付を選ぶと内訳を表示）")
+            result.dailySummaries(transport).forEach { day ->
+              TextButton(
+                onClick = { expandedDate = if (expandedDate == day.date) null else day.date },
+                modifier = Modifier.fillMaxWidth(),
+              ) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                  Text(date)
-                  Text(formatBytes(bytes))
+                  Text("${day.date} ${if (expandedDate == day.date) "閉じる" else "内訳"}")
+                  Text(formatBytes(day.totalBytes))
                 }
               }
+              if (expandedDate == day.date) {
+                Column(
+                  modifier = Modifier.fillMaxWidth().padding(start = 12.dp),
+                  verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                  Text("受信: ${formatBytes(day.receivedBytes)} / 送信: ${formatBytes(day.sentBytes)}")
+                  day.features.forEach { feature ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                      Text(featureLabel(feature.feature))
+                      Text(formatBytes(feature.totalBytes))
+                    }
+                    Text("受信 ${formatBytes(feature.receivedBytes)} / 送信 ${formatBytes(feature.sentBytes)}")
+                  }
+                  val feeds = result.topRssFeeds(transport, date = day.date)
+                  if (feeds.isNotEmpty()) {
+                    Text("この日のRSSフィード別（受信量上位10件）")
+                    feeds.forEach { feed ->
+                      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(feed.feedTitle ?: "削除済みフィード", modifier = Modifier.weight(1f))
+                        Text(formatBytes(feed.receivedBytes))
+                      }
+                      Text("取得 ${feed.requests}回 / HTTP 304: ${feed.notModified}回（${feed.notModifiedPercent}%）")
+                    }
+                  }
+                }
+              }
+            }
             if (transport == "all") {
               val unknown = visible.filter { it.transport == "unknown" }.sumOf(TrafficUsageRecord::totalBytes)
               Text("回線不明: ${formatBytes(unknown)}（VPN・回線切替など）")
