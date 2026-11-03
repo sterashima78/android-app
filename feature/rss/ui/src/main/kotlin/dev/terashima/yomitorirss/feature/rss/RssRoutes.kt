@@ -217,6 +217,8 @@ fun RssSettingsRoute(
         onScreenRefreshIntervalChange(minutes)
       },
       failureRetryIntervalMinutes = failureRetryIntervalMinutes,
+      feeds = state.feeds,
+      onSetFeedManualWifiOnly = feedViewModel::setFeedManualWifiOnly,
       onFailureRetryIntervalChange = { minutes ->
         failureRetryIntervalMinutes = minutes
         onFailureRetryIntervalChange(minutes)
