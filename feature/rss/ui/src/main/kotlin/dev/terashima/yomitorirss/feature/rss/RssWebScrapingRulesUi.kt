@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +49,8 @@ internal fun RssWebScrapingRulesUi(
   onScreenRefreshIntervalChange: (Long) -> Unit,
   failureRetryIntervalMinutes: Long,
   onFailureRetryIntervalChange: (Long) -> Unit,
+  feeds: List<Feed>,
+  onSetFeedManualWifiOnly: (Feed, Boolean) -> Unit,
   recommendationPendingFeedbackCount: Int,
   recommendationPendingPriorityFeedbackCount: Int,
   onSaveRecommendationCondition: (String) -> Unit,
@@ -89,6 +92,43 @@ internal fun RssWebScrapingRulesUi(
           options = listOf(1L, 5L, 15L, 30L, 60L),
         ) { minutes ->
           if (minutes != null) onFailureRetryIntervalChange(minutes)
+        }
+      }
+    }
+    item { HorizontalDivider() }
+    item {
+      Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("手動更新のWi-Fi制限", style = MaterialTheme.typography.titleLarge)
+        Text(
+          "ONにしたフィードは、手動更新時にWi-Fi未接続なら取得しません。画面表示時・定期更新・インポート時の自動取得には影響しません。",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+    if (feeds.isEmpty()) {
+      item { Text("購読中のフィードはありません。", style = MaterialTheme.typography.bodySmall) }
+    } else {
+      items(feeds, key = { "wifi-${it.id}" }) { feed ->
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+          Column(Modifier.weight(1f)) {
+            Text(feed.title, style = MaterialTheme.typography.bodyMedium)
+            Text(
+              feed.feedUrl,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              style = MaterialTheme.typography.bodySmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Switch(
+            checked = feed.manualWifiOnly,
+            onCheckedChange = { onSetFeedManualWifiOnly(feed, it) },
+          )
         }
       }
     }
