@@ -18,6 +18,8 @@ models:
 - LAN IPv4 addressが変わった場合は新しいbootstrap tokenへrotationし、旧bootstrap tokenと既存session tokenを失効する。server停止時も両tokenを失効し、再起動後に旧tokenを受け入れない。
 <!-- /formal-requirement -->
 - RSS未読やTask等をホーム画面widgetへ表示する。
+- 設定の通信量診断では7/30/90日の期間、モバイル/Wi-Fi/全回線を切り替え、通信量の期間合計と機能別・フィード別の集計を確認できる。
+- 日別の記録は日本時間（JST、UTC+9）の0時区切りで新しい日付から表示し、各日付を選択するとその日の受信量・送信量・機能別内訳・フィード別取得状況を確認できる。通信量が記録されていない日付は一覧へ表示しない。
 
 ## 形式モデル
 
