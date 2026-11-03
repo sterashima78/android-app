@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.rss.shouldSkipManualRefresh
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.markReadLaterWithPriorityFeedback
 import dev.terashima.yomitorirss.feature.widget.WidgetArticle
@@ -69,9 +70,10 @@ class DefaultWidgetRepository(
     val failureRetryMillis = failureRetryIntervalMinutes() * 60_000L
     refreshWidgetFeeds(feedRepository.listFeeds().filter { sourceSelector(it.feedUrl) }) { feed ->
       if (force) {
-        if (!feed.manualWifiOnly || isWifiConnected()) feedRepository.refreshFeed(feed)
+        if (!feed.shouldSkipManualRefresh(isWifiConnected)) feedRepository.refreshFeed(feed)
+      } else {
+        feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
       }
-      else feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
     }
   }
 }
