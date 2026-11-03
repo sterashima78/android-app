@@ -40,6 +40,29 @@ class RssFeedTrafficSummaryTest {
   }
 
   @Test
+  fun `日付別のフィード集計は指定日の回線だけを対象とする`() {
+    val overview = TrafficUsageOverview(
+      records = emptyList(),
+      systemMobileBytes = null,
+      systemWifiBytes = null,
+      feedRecords = listOf(
+        RssFeedTrafficRecord("2026-11-02", "feed-a", "A", "mobile", "manual", 100, 1, 0),
+        RssFeedTrafficRecord("2026-11-03", "feed-a", "A", "mobile", "background", 200, 2, 1),
+        RssFeedTrafficRecord("2026-11-03", "feed-a", "A", "wifi", "manual", 300, 1, 0),
+      ),
+    )
+
+    val selected = overview.topRssFeeds("mobile", date = "2026-11-03").single()
+    assertEquals(200L, selected.receivedBytes)
+    assertEquals(2L, selected.requests)
+    assertEquals(1L, selected.notModified)
+    assertEquals(mapOf("background" to 2L), selected.origins)
+    assertEquals(500L, overview.topRssFeeds("all", date = "2026-11-03").single().receivedBytes)
+    assertEquals(600L, overview.topRssFeeds("all").single().receivedBytes)
+    assertEquals(0, overview.topRssFeeds("mobile", date = "2026-11-01").size)
+  }
+
+  @Test
   fun `削除済みフィードは表示名なしでも集計できる`() {
     val overview = TrafficUsageOverview(
       records = emptyList(),
