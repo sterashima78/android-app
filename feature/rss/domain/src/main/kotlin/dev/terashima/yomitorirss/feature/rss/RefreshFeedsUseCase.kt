@@ -74,7 +74,7 @@ class RefreshFeedsUseCase(
           permits.withPermit {
             try {
               if (mode == FeedRefreshMode.FORCE && effectiveOrigin == FeedRefreshOrigin.MANUAL &&
-                feed.manualWifiOnly && !isWifiConnected()
+                feed.shouldSkipManualRefresh(isWifiConnected)
               ) {
                 wifiSkipped.incrementAndGet()
               } else {
