@@ -113,6 +113,11 @@ class DefaultFeedRepository(
     dataChanges.notifyChanged()
   }
 
+  override suspend fun setFeedManualWifiOnly(feedId: String, enabled: Boolean) {
+    store.setFeedManualWifiOnly(feedId, enabled)
+    dataChanges.notifyChanged()
+  }
+
   override suspend fun setFeedRefreshInterval(feedId: String, minutes: Long?) {
     store.setFeedRefreshInterval(feedId, minutes)
     dataChanges.notifyChanged()
