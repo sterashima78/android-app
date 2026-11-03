@@ -15,6 +15,7 @@ data class Feed(
   val folderId: String? = null,
   val contentTypeOverride: ContentType? = null,
   val refreshIntervalMinutes: Long? = null,
+  val manualWifiOnly: Boolean = false,
 )
 
 data class FeedFolder(
