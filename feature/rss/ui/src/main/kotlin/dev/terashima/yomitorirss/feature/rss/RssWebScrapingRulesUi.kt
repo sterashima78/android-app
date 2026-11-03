@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -28,6 +29,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -67,6 +70,7 @@ internal fun RssWebScrapingRulesUi(
 ) {
   var editingRule by remember { mutableStateOf<RssWebScrapingRule?>(null) }
   var creatingRule by remember { mutableStateOf(false) }
+  var showManualWifiSettings by remember { mutableStateOf(false) }
   var manualRecommendationCondition by remember(recommendationPolicy.revision) {
     mutableStateOf(recommendationPolicy.manualCondition)
   }
@@ -100,35 +104,12 @@ internal fun RssWebScrapingRulesUi(
       Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("手動更新のWi-Fi制限", style = MaterialTheme.typography.titleLarge)
         Text(
-          "ONにしたフィードは、手動更新時にWi-Fi未接続なら取得しません。画面表示時・定期更新・インポート時の自動取得には影響しません。",
+          "Wi-Fi未接続時の手動取得を制限するフィードを選択します。自動更新・定期更新・インポート時の取得には影響しません。",
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-      }
-    }
-    if (feeds.isEmpty()) {
-      item { Text("購読中のフィードはありません。", style = MaterialTheme.typography.bodySmall) }
-    } else {
-      items(feeds, key = { "wifi-${it.id}" }) { feed ->
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-          Column(Modifier.weight(1f)) {
-            Text(feed.title, style = MaterialTheme.typography.bodyMedium)
-            Text(
-              feed.feedUrl,
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-          Switch(
-            checked = feed.manualWifiOnly,
-            onCheckedChange = { onSetFeedManualWifiOnly(feed, it) },
-          )
+        TextButton(onClick = { showManualWifiSettings = true }, enabled = feeds.isNotEmpty()) {
+          Text("フィードごとに設定（${feeds.count { it.manualWifiOnly }} / ${feeds.size}件がON）")
         }
       }
     }
@@ -311,6 +292,46 @@ internal fun RssWebScrapingRulesUi(
         }
       }
     }
+  }
+
+
+  if (showManualWifiSettings) {
+    AlertDialog(
+      onDismissRequest = { showManualWifiSettings = false },
+      title = { Text("手動更新のWi-Fi制限") },
+      text = {
+        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+          items(feeds, key = { "manual-wifi-${it.id}" }) { feed ->
+            Row(
+              modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+              Column(Modifier.weight(1f)) {
+                Text(feed.title, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                  feed.feedUrl,
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+              }
+              Switch(
+                checked = feed.manualWifiOnly,
+                onCheckedChange = { onSetFeedManualWifiOnly(feed, it) },
+                modifier = Modifier.semantics {
+                  contentDescription = "${feed.title}: 手動更新はWi-Fi接続時のみ"
+                },
+              )
+            }
+          }
+        }
+      },
+      confirmButton = {
+        TextButton(onClick = { showManualWifiSettings = false }) { Text("閉じる") }
+      },
+    )
   }
 
   if (creatingRule || editingRule != null) {
