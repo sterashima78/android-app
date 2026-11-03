@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
 import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.rss.shouldSkipManualRefresh
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.markReadLaterWithPriorityFeedback
 import dev.terashima.yomitorirss.feature.widget.WidgetArticle
@@ -21,6 +22,7 @@ class DefaultWidgetRepository(
   private val onReadLaterSaved: ((Article) -> Unit)? = null,
   private val automaticIntervalMinutes: () -> Long = { 60L },
   private val failureRetryIntervalMinutes: () -> Long = { 5L },
+  private val isWifiConnected: () -> Boolean = { true },
 ) : WidgetRepository {
   override fun listUnreadArticles(): List<WidgetArticle> = runBlocking {
     articleRepository.listUnreadArticles()
@@ -67,8 +69,11 @@ class DefaultWidgetRepository(
     val minimumAgeMillis = automaticIntervalMinutes() * 60_000L
     val failureRetryMillis = failureRetryIntervalMinutes() * 60_000L
     refreshWidgetFeeds(feedRepository.listFeeds().filter { sourceSelector(it.feedUrl) }) { feed ->
-      if (force) feedRepository.refreshFeed(feed)
-      else feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
+      if (force) {
+        if (!feed.shouldSkipManualRefresh(isWifiConnected)) feedRepository.refreshFeed(feed)
+      } else {
+        feedRepository.refreshFeedIfDue(feed, minimumAgeMillis, failureRetryMillis)
+      }
     }
   }
 }

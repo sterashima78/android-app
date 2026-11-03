@@ -151,6 +151,13 @@ internal class FeedStore(
     require(updated > 0) { "フィードが見つかりません" }
   }
 
+  fun setFeedManualWifiOnly(feedId: String, enabled: Boolean) {
+    val updated = database.write {
+      update("feeds", contentValues("manual_wifi_only" to if (enabled) "1" else "0"), "id=?", arrayOf(feedId))
+    }
+    require(updated > 0) { "フィードが見つかりません" }
+  }
+
   fun setFeedRefreshInterval(feedId: String, minutes: Long?) {
     requireRssRefreshInterval(minutes)
     val updated = database.write {
@@ -266,6 +273,7 @@ private fun Feed.values(): ContentValues = contentValues(
   "folder_id" to folderId,
   "content_type" to contentTypeOverride?.name,
   "refresh_interval_minutes" to refreshIntervalMinutes?.toString(),
+  "manual_wifi_only" to if (manualWifiOnly) "1" else "0",
 )
 
 private fun FeedFolder.values(): ContentValues = contentValues(
@@ -293,6 +301,7 @@ private fun Cursor.feed(): Feed = Feed(
   folderId = nullableString("folder_id"),
   contentTypeOverride = nullableString("content_type").toContentTypeOrNull(),
   refreshIntervalMinutes = nullableLong("refresh_interval_minutes"),
+  manualWifiOnly = getInt(getColumnIndexOrThrow("manual_wifi_only")) != 0,
 )
 
 private fun Cursor.feedFolder(): FeedFolder = FeedFolder(

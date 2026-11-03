@@ -15,6 +15,7 @@ data class Feed(
   val folderId: String? = null,
   val contentTypeOverride: ContentType? = null,
   val refreshIntervalMinutes: Long? = null,
+  val manualWifiOnly: Boolean = false,
 )
 
 data class FeedFolder(
@@ -24,6 +25,10 @@ data class FeedFolder(
   val createdAt: String,
   val contentTypeOverride: ContentType? = null,
 )
+
+/** Manual refresh is restricted only when this feed opts in and Wi-Fi is unavailable. */
+fun Feed.shouldSkipManualRefresh(isWifiConnected: () -> Boolean): Boolean =
+  manualWifiOnly && !isWifiConnected()
 
 fun Feed.effectiveContentType(folder: FeedFolder?): ContentType =
   contentTypeOverride ?: folder?.contentTypeOverride ?: ContentType.ARTICLE

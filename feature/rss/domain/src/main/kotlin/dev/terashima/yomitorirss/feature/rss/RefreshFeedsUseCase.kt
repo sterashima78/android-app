@@ -35,12 +35,14 @@ data class RefreshFeedsResult(
   val total: Int,
   val failures: Int,
   val skipped: Int = 0,
+  val wifiSkipped: Int = 0,
 )
 
 class RefreshFeedsUseCase(
   private val repository: FeedRepository,
   private val maxConcurrency: Int = 4,
   private val intervals: () -> FeedRefreshIntervals = { FeedRefreshIntervals() },
+  private val isWifiConnected: () -> Boolean = { true },
 ) {
   suspend operator fun invoke(
     feeds: List<Feed>,
@@ -54,6 +56,7 @@ class RefreshFeedsUseCase(
   ): RefreshFeedsResult {
     val failures = AtomicInteger()
     val skipped = AtomicInteger()
+    val wifiSkipped = AtomicInteger()
     val completed = AtomicInteger()
     val permits = Semaphore(maxConcurrency)
     val policy = intervals()
@@ -70,7 +73,12 @@ class RefreshFeedsUseCase(
         async {
           permits.withPermit {
             try {
-              val fetched = when (mode) {
+              if (mode == FeedRefreshMode.FORCE && effectiveOrigin == FeedRefreshOrigin.MANUAL &&
+                feed.shouldSkipManualRefresh(isWifiConnected)
+              ) {
+                wifiSkipped.incrementAndGet()
+              } else {
+                val fetched = when (mode) {
                 FeedRefreshMode.AUTOMATIC, FeedRefreshMode.SCHEDULED -> repository.refreshFeedIfDue(
                   feed,
                   minimumAgeMillis = (if (mode == FeedRefreshMode.AUTOMATIC) {
@@ -86,7 +94,8 @@ class RefreshFeedsUseCase(
                   failureRetryMillis = 0L,
                 )
               }
-              if (!fetched) skipped.incrementAndGet()
+                if (!fetched) skipped.incrementAndGet()
+              }
             } catch (error: CancellationException) {
               throw error
             } catch (_: Exception) {
@@ -99,6 +108,11 @@ class RefreshFeedsUseCase(
       }
     }
 
-    return RefreshFeedsResult(total = feeds.size, failures = failures.get(), skipped = skipped.get())
+    return RefreshFeedsResult(
+      total = feeds.size,
+      failures = failures.get(),
+      skipped = skipped.get(),
+      wifiSkipped = wifiSkipped.get(),
+    )
   }
 }

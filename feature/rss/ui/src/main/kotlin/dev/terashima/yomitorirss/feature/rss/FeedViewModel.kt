@@ -101,6 +101,11 @@ class FeedViewModel(
           message = when {
             !showCompletionMessage -> it.message
             result.total == 0 -> "登録済みフィードはありません"
+            result.wifiSkipped > 0 -> {
+              val updated = result.total - result.failures - result.skipped - result.wifiSkipped
+              "更新 ${updated}件 / Wi-Fi未接続でスキップ ${result.wifiSkipped}件" +
+                if (result.failures > 0) " / 失敗 ${result.failures}件" else ""
+            }
             result.failures == 0 && result.skipped == result.total -> "取得済みのフィードは最新です"
             result.failures == 0 -> "フィードを更新しました"
             result.failures == result.total -> "すべてのフィードの更新に失敗しました"
@@ -249,6 +254,14 @@ class FeedViewModel(
     viewModelScope.launch(Dispatchers.IO) {
       runCatching { repository.setFeedContentType(feed.id, contentType) }
         .onSuccess { _state.update { it.copy(message = "${feed.title}のコンテンツ種別を変更しました") } }
+        .onFailure(::showError)
+    }
+  }
+
+  fun setFeedManualWifiOnly(feed: Feed, enabled: Boolean) {
+    viewModelScope.launch(Dispatchers.IO) {
+      runCatching { repository.setFeedManualWifiOnly(feed.id, enabled) }
+        .onSuccess { _state.update { it.copy(message = "${feed.title}の手動更新設定を変更しました") } }
         .onFailure(::showError)
     }
   }

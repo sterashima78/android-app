@@ -58,8 +58,11 @@ fun backgroundDataFetchConstraints(context: Context): Constraints {
 fun backgroundDataFetchNetworkRequest(context: Context): NetworkRequest =
   backgroundDataFetchNetworkRequest(BackgroundDataFetchPreferences(context).wifiOnly)
 
-fun isBackgroundDataFetchAllowed(context: Context): Boolean {
-  if (!BackgroundDataFetchPreferences(context).wifiOnly) return true
+fun isBackgroundDataFetchAllowed(context: Context): Boolean =
+  !BackgroundDataFetchPreferences(context).wifiOnly || isActiveWifiNetwork(context)
+
+/** Active default network must use a Wi-Fi transport and support internet traffic. */
+fun isActiveWifiNetwork(context: Context): Boolean {
   val connectivityManager = context.applicationContext.getSystemService(ConnectivityManager::class.java)
   val activeNetwork = connectivityManager.activeNetwork ?: return false
   val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
