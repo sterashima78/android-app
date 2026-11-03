@@ -13,6 +13,8 @@ import dev.terashima.yomitorirss.feature.article.SourceContentItem
 import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Before
@@ -39,7 +41,7 @@ class FeedStoreTransactionTest {
               id TEXT PRIMARY KEY, title TEXT, custom_title TEXT, feed_url TEXT,
               site_url TEXT, etag TEXT, last_modified TEXT, last_fetched_at TEXT,
               last_error TEXT, created_at TEXT, folder_id TEXT, content_type TEXT,
-              refresh_interval_minutes INTEGER
+              refresh_interval_minutes INTEGER, manual_wifi_only INTEGER NOT NULL DEFAULT 0
             )
           """.trimIndent(),
         )
@@ -57,6 +59,17 @@ class FeedStoreTransactionTest {
   @After
   fun tearDown() {
     helper.close()
+  }
+
+  @Test
+  fun manualWifiOnlyIsPersistedPerFeed() {
+    val feed = store.addFeed(parsed("Original"), null, null)
+
+    assertFalse(store.listFeeds().single().manualWifiOnly)
+    store.setFeedManualWifiOnly(feed.id, true)
+    assertTrue(store.listFeeds().single().manualWifiOnly)
+    store.setFeedManualWifiOnly(feed.id, false)
+    assertFalse(store.listFeeds().single().manualWifiOnly)
   }
 
   @Test
