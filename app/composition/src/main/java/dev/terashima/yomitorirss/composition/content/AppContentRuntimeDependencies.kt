@@ -3,6 +3,7 @@ package dev.terashima.yomitorirss.composition.content
 import android.app.Application
 import dev.terashima.yomitorirss.core.aiinference.BackgroundAiStructuredTextInference
 import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
+import dev.terashima.yomitorirss.core.background.isActiveWifiNetwork
 import dev.terashima.yomitorirss.core.database.DataChangeNotifier
 import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.core.network.HttpClient
@@ -187,7 +188,7 @@ internal class AppContentRuntimeDependencies(
       rssRefreshPreferences.intervals().copy(
         scheduledMinutes = BackgroundDataFetchPreferences(application).integratedRefreshIntervalMinutes,
       )
-    })
+    }, isWifiConnected = { isActiveWifiNetwork(application) })
   }
 
   val saveSharedBookmarkUseCase: SaveSharedBookmarkUseCase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -206,6 +207,7 @@ internal class AppContentRuntimeDependencies(
       failureRetryIntervalMinutes = {
         rssRefreshPreferences.failureRetryIntervalMinutes
       },
+      isWifiConnected = { isActiveWifiNetwork(application) },
       onReadLaterSaved = { article ->
         rssRecommendationService.recordPriorityFeedback(article)
         rssRecommendationTaskScheduler.scheduleFeedbackLearning()
