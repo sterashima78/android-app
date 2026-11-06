@@ -42,6 +42,12 @@ internal class YouTubeVideoProviderClient(
 
   suspend fun refresh(sourceId: String): VideoProviderFeed = fetch(validateChannelId(sourceId))
 
+  suspend fun channelNameHint(sourceUrl: String): String? {
+    val id = channelIdForHint(sourceUrl) ?: return null
+    val feed = fetch(id)
+    return feed.title.takeIf { feed.sourceId == id }
+  }
+
   private suspend fun fetch(channelId: String): VideoProviderFeed = withContext(Dispatchers.IO) {
     val response = httpClient.execute(
       HttpRequest(
@@ -116,6 +122,34 @@ internal class YouTubeVideoProviderClient(
       "channel ID を含む HTTPS のチャンネルURLを入力してください"
     }
     return segments[1]
+  }
+
+  private fun channelIdForHint(sourceUrl: String): String? {
+    val uri = runCatching { URI(sourceUrl.trim()) }.getOrNull() ?: return null
+    if (
+      uri.scheme != "https" ||
+      uri.host !in setOf("www.youtube.com", "youtube.com") ||
+      uri.rawFragment != null ||
+      uri.rawUserInfo != null ||
+      uri.port != -1
+    ) return null
+
+    val sourceId = when (val path = uri.rawPath.orEmpty()) {
+      "/feeds/videos.xml" -> {
+        val query = uri.rawQuery.orEmpty()
+        when {
+          query.startsWith("channel_id=") -> query.removePrefix("channel_id=")
+          query.startsWith("playlist_id=UULF") -> "UC" + query.removePrefix("playlist_id=UULF")
+          else -> null
+        }
+      }
+      else -> if (uri.rawQuery == null && path.startsWith("/channel/")) {
+        path.removePrefix("/channel/")
+      } else {
+        null
+      }
+    }
+    return sourceId?.takeIf(CHANNEL_ID_PATTERN::matches)
   }
 
   private fun canonicalChannelId(value: String): String = when {
