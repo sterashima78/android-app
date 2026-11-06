@@ -64,6 +64,7 @@ class YouTubeVideoProviderClientTest {
     val client = YouTubeVideoProviderClient(http)
     val urls = listOf(
       "https://www.youtube.com/channel/$CHANNEL_ID",
+      "https://www.youtube.com/channel/$CHANNEL_ID/videos",
       "https://www.youtube.com/feeds/videos.xml?channel_id=$CHANNEL_ID",
       "https://www.youtube.com/feeds/videos.xml?playlist_id=UULFabcdefghijklmnopqrstuv",
     )
@@ -71,7 +72,8 @@ class YouTubeVideoProviderClientTest {
     urls.forEach { sourceUrl ->
       assertEquals("Test Channel", client.channelNameHint(sourceUrl))
     }
-    assertEquals(3, http.requests.size)
+    assertEquals(4, http.requests.size)
+    assertTrue(http.requests.all { it.url == "https://www.youtube.com/feeds/videos.xml?channel_id=$CHANNEL_ID" })
   }
 
   @Test
