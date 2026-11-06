@@ -167,13 +167,12 @@ class VideoViewModel(
 
   fun lookupSubscriptionChannelNames() {
     val snapshot = mutableState.value
-    val customProviderIds = snapshot.providers
-      .filter { it.type == VideoProviderType.CUSTOM }
-      .mapTo(HashSet()) { it.id }
+    val providerTypes = snapshot.providers.associate { it.id to it.type }
     snapshot.subscriptions
       .filter { subscription ->
-        subscription.providerId in customProviderIds &&
-          subscription.needsChannelNameHint() &&
+        val type = providerTypes[subscription.providerId]
+        type != null &&
+          subscription.needsChannelNameHint(type) &&
           subscription.id !in snapshot.subscriptionChannelNames
       }
       .forEach { subscription ->
@@ -415,9 +414,10 @@ class VideoViewModel(
   )
 }
 
-internal fun VideoSubscription.needsChannelNameHint(): Boolean {
+internal fun VideoSubscription.needsChannelNameHint(providerType: VideoProviderType): Boolean {
   val currentTitle = title.trim()
-  return currentTitle == sourceId ||
+  return (providerType == VideoProviderType.YOUTUBE && currentTitle.equals("Videos", ignoreCase = true)) ||
+    currentTitle == sourceId ||
     currentTitle == sourceUrl ||
     currentTitle.startsWith("https://", ignoreCase = true)
 }

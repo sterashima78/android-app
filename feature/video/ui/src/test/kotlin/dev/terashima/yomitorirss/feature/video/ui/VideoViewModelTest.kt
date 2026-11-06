@@ -314,6 +314,43 @@ class VideoViewModelTest {
   }
 
   @Test
+  fun `組み込み購読の既存Videos表示は名前ヒントで置き換えられる`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val url = "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv"
+      val subscription = VideoSubscription(
+        id = "built-in-sub",
+        providerId = "youtube",
+        sourceId = "UCabcdefghijklmnopqrstuv",
+        title = "Videos",
+        sourceUrl = url,
+      )
+      val requestedUrls = mutableListOf<String>()
+      val providerRepo = object : VideoProviderRepository by FakeVideoProviderRepository {
+        override fun providers(): List<VideoProvider> = listOf(
+          VideoProvider(id = "youtube", type = VideoProviderType.YOUTUBE, name = "Video"),
+        )
+        override fun subscriptions(providerId: String?): List<VideoSubscription> = listOf(subscription)
+        override suspend fun channelNameHint(sourceUrl: String): String? {
+          requestedUrls += sourceUrl
+          return "Public Channel"
+        }
+      }
+      val viewModel = videoViewModel(FakeVideoRepository(), providerRepository = providerRepo)
+      advanceUntilIdle()
+
+      viewModel.lookupSubscriptionChannelNames()
+      advanceUntilIdle()
+
+      assertEquals(listOf(url), requestedUrls)
+      assertEquals("Public Channel", viewModel.state.value.subscriptionChannelNames[subscription.id])
+      assertEquals("Videos", viewModel.state.value.subscriptions.single().title)
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
   fun `任意に設定した購読タイトルでは追加の名前照会をしない`() {
     val subscription = VideoSubscription(
       id = "sub-1",
@@ -323,9 +360,12 @@ class VideoViewModelTest {
       sourceUrl = "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
     )
 
-    assertFalse(subscription.needsChannelNameHint())
-    assertTrue(subscription.copy(title = subscription.sourceUrl).needsChannelNameHint())
-    assertTrue(subscription.copy(title = subscription.sourceId).needsChannelNameHint())
+    assertFalse(subscription.needsChannelNameHint(VideoProviderType.CUSTOM))
+    assertTrue(subscription.copy(title = subscription.sourceUrl).needsChannelNameHint(VideoProviderType.CUSTOM))
+    assertTrue(subscription.copy(title = subscription.sourceId).needsChannelNameHint(VideoProviderType.CUSTOM))
+    assertFalse(subscription.copy(title = "Videos").needsChannelNameHint(VideoProviderType.CUSTOM))
+    assertTrue(subscription.copy(title = "Videos").needsChannelNameHint(VideoProviderType.YOUTUBE))
+    assertFalse(subscription.needsChannelNameHint(VideoProviderType.YOUTUBE))
   }
 
   @Test

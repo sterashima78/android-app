@@ -34,6 +34,18 @@ class YouTubeVideoProviderClientTest {
   }
 
   @Test
+  fun `プレイリストのVideosではなく配信元のauthor名を購読タイトルとする`() = runBlocking {
+    val http = RecordingHttpClient(feedResponseWithPlaylistTitle())
+    val client = YouTubeVideoProviderClient(http)
+
+    val feed = client.subscribe("https://www.youtube.com/channel/$CHANNEL_ID")
+
+    assertEquals("Public Channel", feed.title)
+    assertEquals("https://www.youtube.com/feeds/videos.xml?playlist_id=UULFabcdefghijklmnopqrstuv", http.requests.single().url)
+    assertEquals("video-1", feed.videos.single().id)
+  }
+
+  @Test
   fun `購読URLはchannel ID形式のHTTPS URLだけを受け付ける`() = runBlocking {
     val http = RecordingHttpClient(feedResponse())
     val client = YouTubeVideoProviderClient(http)
@@ -97,6 +109,30 @@ class YouTubeVideoProviderClientTest {
     val client = YouTubeVideoProviderClient(http)
 
     assertNull(client.channelNameHint("https://www.youtube.com/channel/$CHANNEL_ID"))
+  }
+
+  private fun feedResponseWithPlaylistTitle(): HttpResponse {
+    val xml = """
+      <?xml version="1.0" encoding="UTF-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015">
+        <yt:channelId>$CHANNEL_ID</yt:channelId>
+        <title>Videos</title>
+        <author><name>Public Channel</name><uri>https://www.youtube.com/channel/$CHANNEL_ID</uri></author>
+        <entry>
+          <yt:videoId>video-1</yt:videoId>
+          <title>Regular video</title>
+          <link rel="alternate" href="https://www.youtube.com/watch?v=video-1" />
+          <published>2026-01-01T00:00:00Z</published>
+        </entry>
+      </feed>
+    """.trimIndent()
+    return HttpResponse(
+      statusCode = 200,
+      reasonPhrase = "OK",
+      finalUrl = "https://example.invalid/feed",
+      headers = emptyMap(),
+      body = xml.toByteArray(),
+    )
   }
 
   private fun feedResponse(channelId: String = CHANNEL_ID): HttpResponse {
