@@ -60,6 +60,7 @@ models:
 - Reddit は source 固有の購読・表示・判定を自身のContextで扱う。
 - 動画チャンネル購読は Video Context が購読型Providerとして扱い、provider設定、subscription、更新、未読状態を共通のVideo lifecycleで管理する。
 - 動画Providerは組み込みProviderに加えて、ユーザーが任意のJavaScript functionを設定するcustom Providerを複数追加できる。custom Providerでもsubscription、未読、あとで見る、保存、再生状態は共通のVideo lifecycleを利用する。
+- カスタム動画Providerの購読一覧では、チャンネルIDのURLなどが購読タイトルになっていても、対応する公開チャンネル名を取得できた場合は補助情報として表示し、解除対象を識別できるようにする。名前を取得できない場合も登録URLと編集可能な購読タイトルを維持する。名前の参照によって既存の購読タイトルや購読状態を書き換えない。
 - 初期の組み込み動画Providerでは通常動画だけを更新対象とし、短尺専用形式とライブ配信は更新対象外とする。
 - 購読型動画の未読、あとで見る、履歴、保存、再生は動画機能内で完結させ、統合ビューへ投影しない。
 - 端末の共有メニューから http/https URL を「動画へ追加」へ共有すると、Web動画として動画機能へ追加し、動画画面へ遷移する。
