@@ -47,6 +47,10 @@ fun VideoFeatureRoute(
   var providerSettingsVisible by remember { mutableStateOf(false) }
   var providerInboxVisible by remember { mutableStateOf(false) }
 
+  LaunchedEffect(providerSettingsVisible, state.subscriptions, state.providers) {
+    if (providerSettingsVisible) viewModel.lookupSubscriptionChannelNames()
+  }
+
   LaunchedEffect(playbackSession?.isFullscreen) {
     onPlaybackFullscreenPresentationChange(playbackSession?.isFullscreen == true)
   }
