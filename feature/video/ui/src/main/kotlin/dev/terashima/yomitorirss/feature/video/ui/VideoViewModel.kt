@@ -419,6 +419,5 @@ internal fun VideoSubscription.needsChannelNameHint(): Boolean {
   val currentTitle = title.trim()
   return currentTitle == sourceId ||
     currentTitle == sourceUrl ||
-    currentTitle.startsWith("https://", ignoreCase = true) &&
-    (currentTitle.contains("/channel/") || currentTitle.contains("/feeds/videos.xml?"))
+    currentTitle.startsWith("https://", ignoreCase = true)
 }
