@@ -78,7 +78,9 @@ internal class YouTubeVideoProviderClient(
     val channelId = root.firstText(YT_NAMESPACE, "channelId")
       ?.let(::canonicalChannelId)
       ?: error("動画チャンネルのフィードにchannelIdがありません")
-    val channelTitle = root.firstDirectText(ATOM_NAMESPACE, "title")
+    val channelTitle = (root.getElementsByTagNameNS(ATOM_NAMESPACE, "author").item(0) as? Element)
+      ?.firstText(ATOM_NAMESPACE, "name")
+      ?: root.firstDirectText(ATOM_NAMESPACE, "title")
       ?: error("動画チャンネルのフィードにタイトルがありません")
     val entries = root.getElementsByTagNameNS(ATOM_NAMESPACE, "entry")
     val videos = buildList {
