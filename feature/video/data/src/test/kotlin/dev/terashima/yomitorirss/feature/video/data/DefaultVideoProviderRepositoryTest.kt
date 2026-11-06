@@ -16,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -119,6 +120,39 @@ class DefaultVideoProviderRepositoryTest {
   fun `custom providerの失敗は自動再試行対象にしない`() {
     assertFalse(shouldRetryProviderRefresh(VideoProviderType.CUSTOM, IOException("network")))
     assertTrue(shouldRetryProviderRefresh(VideoProviderType.YOUTUBE, VideoProviderHttpException(500)))
+  }
+
+  @Test
+  fun `カスタム購読のチャンネル名ヒントは公開フィードから取得し保存状態は変えない`() = runBlocking {
+    val http = RecordingSuccessHttpClient()
+    val repository = DefaultVideoProviderRepository(connection, http)
+    val sourceUrl = "https://www.youtube.com/channel/$CHANNEL_ID_1"
+
+    assertEquals("Channel", repository.channelNameHint(sourceUrl))
+    assertEquals(1, http.requests.size)
+    assertEquals(emptyList<VideoProvider>(), repository.providers())
+    assertEquals(emptyList<dev.terashima.yomitorirss.feature.video.VideoSubscription>(), repository.subscriptions())
+
+    assertNull(repository.channelNameHint("https://example.invalid/channel/$CHANNEL_ID_1"))
+    assertEquals(1, http.requests.size)
+  }
+
+  @Test
+  fun `チャンネル名の取得に失敗しても購読管理用の表示ヒントを返さない`() = runBlocking {
+    val repository = DefaultVideoProviderRepository(connection, DistinctPermanentFailureHttpClient())
+
+    assertNull(repository.channelNameHint("https://www.youtube.com/channel/$CHANNEL_ID_1"))
+  }
+
+  @Test
+  fun `チャンネル名の取得中のcancelは通知する`() = runBlocking {
+    val repository = DefaultVideoProviderRepository(connection, CancellingHttpClient)
+
+    val error = runCatching {
+      repository.channelNameHint("https://www.youtube.com/channel/$CHANNEL_ID_1")
+    }.exceptionOrNull()
+
+    assertTrue(error is CancellationException)
   }
 
   @Test
