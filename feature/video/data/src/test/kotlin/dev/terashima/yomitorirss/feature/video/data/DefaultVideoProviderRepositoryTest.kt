@@ -117,6 +117,22 @@ class DefaultVideoProviderRepositoryTest {
   }
 
   @Test
+  fun `組み込み購読のVideosタイトルを再取得したauthor名に更新する`() = runBlocking {
+    val database = VideoProviderDatabase(connection)
+    val provider = database.saveProvider(testProvider())
+    database.upsertProviderFeed(provider, emptyFeed(CHANNEL_ID_1, "Videos"))
+    val repository = DefaultVideoProviderRepository(connection, RecordingSuccessHttpClient())
+
+    assertEquals("Videos", repository.subscriptions(provider.id).single().title)
+    val result = repository.refreshProviders(provider.id)
+
+    assertEquals(1, result.refreshedSubscriptions)
+    assertEquals("Channel Name", repository.subscriptions(provider.id).single().title)
+    assertEquals(CHANNEL_ID_1, repository.subscriptions(provider.id).single().sourceId)
+    assertEquals("video", repository.unreadVideos().single().providerItemId)
+  }
+
+  @Test
   fun `custom providerの失敗は自動再試行対象にしない`() {
     assertFalse(shouldRetryProviderRefresh(VideoProviderType.CUSTOM, IOException("network")))
     assertTrue(shouldRetryProviderRefresh(VideoProviderType.YOUTUBE, VideoProviderHttpException(500)))
@@ -322,7 +338,8 @@ class DefaultVideoProviderRepositoryTest {
         <?xml version="1.0" encoding="UTF-8"?>
         <feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015">
           <yt:channelId>$channelId</yt:channelId>
-          <title>Channel</title>
+          <title>Videos</title>
+          <author><name>Channel Name</name></author>
           <entry>
             <yt:videoId>$videoId</yt:videoId>
             <yt:channelId>$channelId</yt:channelId>
