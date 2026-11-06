@@ -42,7 +42,7 @@ class DefaultVideoProviderRepository internal constructor(
   override fun subscriptions(providerId: String?): List<VideoSubscription> = database.subscriptions(providerId)
 
   override suspend fun channelNameHint(sourceUrl: String): String? = try {
-    youtubeClient.subscribe(sourceUrl).title
+    youtubeClient.channelNameHint(sourceUrl)
   } catch (error: CancellationException) {
     throw error
   } catch (_: Exception) {
