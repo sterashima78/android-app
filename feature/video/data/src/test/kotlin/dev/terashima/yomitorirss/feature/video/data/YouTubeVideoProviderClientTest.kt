@@ -5,6 +5,7 @@ import dev.terashima.yomitorirss.core.network.HttpRequest
 import dev.terashima.yomitorirss.core.network.HttpResponse
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -55,6 +56,47 @@ class YouTubeVideoProviderClientTest {
     }.exceptionOrNull()
 
     assertTrue(error is IllegalArgumentException)
+  }
+
+  @Test
+  fun `チャンネル名ヒントはチャンネルURLと2形式のフィードURLに対応する`() = runBlocking {
+    val http = RecordingHttpClient(feedResponse())
+    val client = YouTubeVideoProviderClient(http)
+    val urls = listOf(
+      "https://www.youtube.com/channel/$CHANNEL_ID",
+      "https://www.youtube.com/channel/$CHANNEL_ID/videos",
+      "https://www.youtube.com/feeds/videos.xml?channel_id=$CHANNEL_ID",
+      "https://www.youtube.com/feeds/videos.xml?playlist_id=UULFabcdefghijklmnopqrstuv",
+    )
+
+    urls.forEach { sourceUrl ->
+      assertEquals("Test Channel", client.channelNameHint(sourceUrl))
+    }
+    assertEquals(4, http.requests.size)
+    assertTrue(http.requests.all { it.url == "https://www.youtube.com/feeds/videos.xml?channel_id=$CHANNEL_ID" })
+  }
+
+  @Test
+  fun `不正なチャンネルURLからは名前を取得せず通信もしない`() = runBlocking {
+    val http = RecordingHttpClient(feedResponse())
+    val client = YouTubeVideoProviderClient(http)
+
+    listOf(
+      "http://www.youtube.com/channel/$CHANNEL_ID",
+      "https://www.youtube.com.evil.invalid/channel/$CHANNEL_ID",
+      "https://www.youtube.com/channel/$CHANNEL_ID?extra=true",
+      "https://www.youtube.com/feeds/videos.xml?channel_id=$CHANNEL_ID&extra=true",
+      "https://www.youtube.com/feeds/videos.xml?playlist_id=UULFbad",
+    ).forEach { assertNull(client.channelNameHint(it)) }
+    assertTrue(http.requests.isEmpty())
+  }
+
+  @Test
+  fun `チャンネル名ヒントは取得したチャンネルIDが異なる場合には採用しない`() = runBlocking {
+    val http = RecordingHttpClient(feedResponse(channelId = OTHER_CHANNEL_ID))
+    val client = YouTubeVideoProviderClient(http)
+
+    assertNull(client.channelNameHint("https://www.youtube.com/channel/$CHANNEL_ID"))
   }
 
   private fun feedResponse(channelId: String = CHANNEL_ID): HttpResponse {

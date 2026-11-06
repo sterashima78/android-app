@@ -41,6 +41,14 @@ class DefaultVideoProviderRepository internal constructor(
 
   override fun subscriptions(providerId: String?): List<VideoSubscription> = database.subscriptions(providerId)
 
+  override suspend fun channelNameHint(sourceUrl: String): String? = try {
+    youtubeClient.channelNameHint(sourceUrl)
+  } catch (error: CancellationException) {
+    throw error
+  } catch (_: Exception) {
+    null
+  }
+
   override suspend fun subscribe(providerId: String, sourceUrl: String, title: String?): VideoSubscription {
     val provider = database.requireProvider(providerId)
     require(provider.enabled) { "動画プロバイダが無効です" }

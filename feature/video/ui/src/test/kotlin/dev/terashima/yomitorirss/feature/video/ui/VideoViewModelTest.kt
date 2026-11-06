@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.video.VideoPlaybackState
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoProvider
 import dev.terashima.yomitorirss.feature.video.VideoProviderRefreshResult
+import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
 import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoRepository
@@ -274,6 +275,60 @@ class VideoViewModelTest {
   }
 
   @Test
+  fun `URLで登録されたカスタム購読にはチャンネル名を補助表示して保存済みタイトルを維持する`() = runTest {
+    Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+    try {
+      val url = "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv"
+      val subscription = VideoSubscription(
+        id = "sub-1",
+        providerId = "custom-1",
+        sourceId = "UCabcdefghijklmnopqrstuv",
+        title = url,
+        sourceUrl = url,
+      )
+      val requestedUrls = mutableListOf<String>()
+      val providerRepo = object : VideoProviderRepository by FakeVideoProviderRepository {
+        override fun providers(): List<VideoProvider> = listOf(
+          VideoProvider(id = "custom-1", type = VideoProviderType.CUSTOM, name = "Custom"),
+        )
+        override fun subscriptions(providerId: String?): List<VideoSubscription> = listOf(subscription)
+        override suspend fun channelNameHint(sourceUrl: String): String? {
+          requestedUrls += sourceUrl
+          return "公開チャンネル名"
+        }
+      }
+      val viewModel = videoViewModel(FakeVideoRepository(), providerRepository = providerRepo)
+      advanceUntilIdle()
+
+      viewModel.lookupSubscriptionChannelNames()
+      advanceUntilIdle()
+      viewModel.lookupSubscriptionChannelNames()
+      advanceUntilIdle()
+
+      assertEquals(listOf(url), requestedUrls)
+      assertEquals("公開チャンネル名", viewModel.state.value.subscriptionChannelNames[subscription.id])
+      assertEquals(url, viewModel.state.value.subscriptions.single().title)
+    } finally {
+      Dispatchers.resetMain()
+    }
+  }
+
+  @Test
+  fun `任意に設定した購読タイトルでは追加の名前照会をしない`() {
+    val subscription = VideoSubscription(
+      id = "sub-1",
+      providerId = "custom-1",
+      sourceId = "UCabcdefghijklmnopqrstuv",
+      title = "自分で設定したタイトル",
+      sourceUrl = "https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv",
+    )
+
+    assertFalse(subscription.needsChannelNameHint())
+    assertTrue(subscription.copy(title = subscription.sourceUrl).needsChannelNameHint())
+    assertTrue(subscription.copy(title = subscription.sourceId).needsChannelNameHint())
+  }
+
+  @Test
   fun `保存フォルダをsnapshotへ読み込む`() = runTest {
     Dispatchers.setMain(StandardTestDispatcher(testScheduler))
     try {
@@ -292,9 +347,10 @@ class VideoViewModelTest {
   private fun videoViewModel(
     repository: VideoRepository,
     thumbnailResolver: VideoThumbnailResolver = FakeVideoThumbnailResolver,
+    providerRepository: VideoProviderRepository = FakeVideoProviderRepository,
   ): VideoViewModel = VideoViewModel(
     repository = repository,
-    providerRepository = FakeVideoProviderRepository,
+    providerRepository = providerRepository,
     smbConnectionProfiles = FakeSmbConnectionProfileRepository,
     thumbnailResolver = thumbnailResolver,
   )
@@ -362,6 +418,7 @@ private object FakeVideoProviderRepository : VideoProviderRepository {
   override fun saveProvider(provider: VideoProvider): VideoProvider = provider
   override fun deleteProvider(id: String) = Unit
   override fun subscriptions(providerId: String?): List<VideoSubscription> = emptyList()
+  override suspend fun channelNameHint(sourceUrl: String): String? = null
   override suspend fun subscribe(providerId: String, sourceUrl: String, title: String?): VideoSubscription =
     error("unused")
   override fun updateSubscriptionTitle(subscriptionId: String, title: String) = Unit

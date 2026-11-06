@@ -9,6 +9,7 @@ import dev.terashima.yomitorirss.feature.video.VideoFolder
 import dev.terashima.yomitorirss.feature.video.VideoItem
 import dev.terashima.yomitorirss.feature.video.VideoPlaybackTarget
 import dev.terashima.yomitorirss.feature.video.VideoProvider
+import dev.terashima.yomitorirss.feature.video.VideoProviderType
 import dev.terashima.yomitorirss.feature.video.VideoProviderRepository
 import dev.terashima.yomitorirss.feature.video.VideoProviderVideo
 import dev.terashima.yomitorirss.feature.video.VideoRepository
@@ -22,6 +23,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 private val NoOpVideoThumbnailResolver = object : VideoThumbnailResolver {
   override suspend fun resolve(item: VideoItem): String? = item.thumbnailUrl
@@ -35,6 +38,7 @@ data class VideoUiState(
   val extractorRules: List<WebVideoExtractorRule> = emptyList(),
   val providers: List<VideoProvider> = emptyList(),
   val subscriptions: List<VideoSubscription> = emptyList(),
+  val subscriptionChannelNames: Map<String, String> = emptyMap(),
   val unreadProviderVideos: List<VideoProviderVideo> = emptyList(),
   val watchLaterProviderVideos: List<VideoProviderVideo> = emptyList(),
   val loading: Boolean = true,
@@ -61,6 +65,8 @@ class VideoViewModel(
   private val mutablePlaybackSession = MutableStateFlow<VideoPlaybackSession?>(null)
   val playbackSession: StateFlow<VideoPlaybackSession?> = mutablePlaybackSession.asStateFlow()
   private val thumbnailRequests = mutableSetOf<String>()
+  private val channelNameRequests = mutableSetOf<String>()
+  private val channelNameLookupLimit = Semaphore(3)
   private var latestPlaybackPositionMs: Long = 0L
 
   init {
@@ -157,6 +163,43 @@ class VideoViewModel(
     busyMessage = "購読先を確認中…",
   ) {
     providerRepository.subscribe(providerId, sourceUrl, title)
+  }
+
+  fun lookupSubscriptionChannelNames() {
+    val snapshot = mutableState.value
+    val customProviderIds = snapshot.providers
+      .filter { it.type == VideoProviderType.CUSTOM }
+      .mapTo(HashSet()) { it.id }
+    snapshot.subscriptions
+      .filter { subscription ->
+        subscription.providerId in customProviderIds &&
+          subscription.needsChannelNameHint() &&
+          subscription.id !in snapshot.subscriptionChannelNames
+      }
+      .forEach { subscription ->
+        if (!channelNameRequests.add(subscription.id)) return@forEach
+        viewModelScope.launch {
+          try {
+            val name = channelNameLookupLimit.withPermit {
+              providerRepository.channelNameHint(subscription.sourceUrl)
+            }?.trim()?.takeIf(String::isNotEmpty)
+            if (name != null) {
+              val current = mutableState.value
+              if (current.subscriptions.any { it.id == subscription.id && it.sourceUrl == subscription.sourceUrl }) {
+                mutableState.value = current.copy(
+                  subscriptionChannelNames = current.subscriptionChannelNames + (subscription.id to name),
+                )
+              }
+            }
+          } catch (error: CancellationException) {
+            throw error
+          } catch (_: Exception) {
+            // An optional display hint must not block subscription management.
+          } finally {
+            channelNameRequests.remove(subscription.id)
+          }
+        }
+      }
   }
 
   fun updateSubscriptionTitle(subscriptionId: String, title: String) =
@@ -370,4 +413,11 @@ class VideoViewModel(
     val unreadProviderVideos: List<VideoProviderVideo>,
     val watchLaterProviderVideos: List<VideoProviderVideo>,
   )
+}
+
+internal fun VideoSubscription.needsChannelNameHint(): Boolean {
+  val currentTitle = title.trim()
+  return currentTitle == sourceId ||
+    currentTitle == sourceUrl ||
+    currentTitle.startsWith("https://", ignoreCase = true)
 }

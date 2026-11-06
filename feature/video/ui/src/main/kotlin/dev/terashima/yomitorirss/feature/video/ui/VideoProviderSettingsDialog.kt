@@ -114,6 +114,7 @@ internal fun VideoProviderSettingsDialog(
               provider = provider,
               busy = state.busy,
               subscriptions = state.subscriptions.filter { it.providerId == provider.id },
+              channelNames = state.subscriptionChannelNames,
               onSaveProvider = onSaveProvider,
               onDeleteProvider = onDeleteProvider,
               onSubscribe = onSubscribe,
@@ -138,6 +139,7 @@ private fun ProviderEditor(
   provider: VideoProvider,
   busy: Boolean,
   subscriptions: List<dev.terashima.yomitorirss.feature.video.VideoSubscription>,
+  channelNames: Map<String, String>,
   onSaveProvider: (VideoProvider) -> Unit,
   onDeleteProvider: (String) -> Unit,
   onSubscribe: (String, String, String?) -> Unit,
@@ -249,6 +251,10 @@ private fun ProviderEditor(
       ) {
         Column(Modifier.weight(1f)) {
           if (provider.type == VideoProviderType.CUSTOM) {
+            val channelName = channelNames[subscription.id]
+            if (!channelName.isNullOrBlank() && channelName != subscription.title) {
+              Text("チャンネル名: $channelName", fontWeight = FontWeight.SemiBold)
+            }
             var editedTitle by remember(subscription.id, subscription.title) {
               mutableStateOf(subscription.title)
             }
