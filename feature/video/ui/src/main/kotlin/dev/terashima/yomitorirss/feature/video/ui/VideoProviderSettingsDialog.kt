@@ -273,7 +273,7 @@ private fun ProviderEditor(
               Text("タイトルを保存")
             }
           } else {
-            Text(subscription.title)
+            Text(channelNames[subscription.id] ?: subscription.title, fontWeight = FontWeight.SemiBold)
           }
           Text(subscription.sourceUrl)
         }
