@@ -130,8 +130,8 @@ class DefaultVideoProviderRepositoryTest {
 
     assertEquals("Channel", repository.channelNameHint(sourceUrl))
     assertEquals(1, http.requests.size)
-    assertEquals(emptyList<VideoProvider>(), repository.providers())
-    assertEquals(emptyList<dev.terashima.yomitorirss.feature.video.VideoSubscription>(), repository.subscriptions())
+    assertTrue(repository.providers().isEmpty())
+    assertTrue(repository.subscriptions().isEmpty())
 
     assertNull(repository.channelNameHint("https://example.invalid/channel/$CHANNEL_ID_1"))
     assertEquals(1, http.requests.size)
@@ -305,8 +305,8 @@ class DefaultVideoProviderRepositoryTest {
     const val CHANNEL_ID_2 = "UCbcdefghijklmnopqrstuvw"
 
     fun HttpRequest.channelId(): String {
-      val playlistId = url.substringAfter("playlist_id=UULF")
-      return "UC$playlistId"
+      val playlistId = url.substringAfter("playlist_id=UULF", "")
+      return if (playlistId.isNotEmpty()) "UC$playlistId" else url.substringAfter("channel_id=")
     }
 
     fun failureResponse(request: HttpRequest, statusCode: Int): HttpResponse = HttpResponse(
