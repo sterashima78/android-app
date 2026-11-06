@@ -144,7 +144,7 @@ class DefaultVideoProviderRepositoryTest {
     val repository = DefaultVideoProviderRepository(connection, http)
     val sourceUrl = "https://www.youtube.com/channel/$CHANNEL_ID_1"
 
-    assertEquals("Channel", repository.channelNameHint(sourceUrl))
+    assertEquals("Channel Name", repository.channelNameHint(sourceUrl))
     assertEquals(1, http.requests.size)
     assertTrue(repository.providers().isEmpty())
     assertTrue(repository.subscriptions().isEmpty())
