@@ -52,6 +52,7 @@ models:
 ## 5.4 Knowledge
 
 - 保存済みコンテンツや要約を資料としてKnowledge pageを生成・更新できる。
+- Knowledge pageは保存済みMarkdown本文を共通rendererで表示し、見出しやリストなどの構造を読み分けられるようにする。生成結果で日本語見出しの記号後の空白が欠落したり隣接見出しが連結された場合も、識別できる見出しは表示時に補正する。
 <!-- formal-requirement
 id: KNOWLEDGE-BUILD-LIFECYCLE-001
 models:

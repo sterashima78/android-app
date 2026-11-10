@@ -215,7 +215,7 @@ private fun MarkdownTableRow(
 }
 
 internal fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
-  val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split('\n')
+  val lines = markdown.replace("\r\n", "\n").replace('\r', '\n').split('\n').toMutableList()
   val blocks = mutableListOf<MarkdownBlock>()
   val paragraph = mutableListOf<String>()
 
@@ -229,6 +229,16 @@ internal fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
   var index = 0
   while (index < lines.size) {
     val line = lines[index]
+    // AI-generated prose can accidentally attach another heading to a CJK heading.
+    // Recover the boundary only for lines that consist of recognizable headings.
+    if (line.trimStart().startsWith("##")) {
+      val headings = line.split(ATTACHED_HEADING)
+      if (headings.size > 1 && headings.all { parseMarkdownHeading(it) != null }) {
+        lines.removeAt(index)
+        lines.addAll(index, headings)
+        continue
+      }
+    }
     if (line.isBlank()) {
       flushParagraph()
       index += 1
@@ -250,9 +260,9 @@ internal fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
       continue
     }
 
-    HEADING.matchEntire(line)?.let { match ->
+    parseMarkdownHeading(line)?.let { heading ->
       flushParagraph()
-      blocks += MarkdownBlock.Heading(match.groupValues[1].length, match.groupValues[2].trim())
+      blocks += heading
       index += 1
       continue
     }
@@ -472,7 +482,16 @@ private fun markdownInlineText(
 }
 
 private val CODE_FENCE = Regex("""^\s*(```|~~~)(.*)$""")
+private fun parseMarkdownHeading(line: String): MarkdownBlock.Heading? {
+  // CommonMark requires a space after '#', but generated Japanese headings can omit it.
+  // Limit this fallback to H2-H6 and CJK text so an ordinary #hashtag stays prose.
+  val match = HEADING.matchEntire(line) ?: CJK_HEADING.matchEntire(line) ?: return null
+  return MarkdownBlock.Heading(match.groupValues[1].length, match.groupValues[2].trim())
+}
+
 private val HEADING = Regex("""^\s*(#{1,6})\s+(.+)$""")
+private val CJK_HEADING = Regex("""^\s*(#{2,6})([\p{IsHan}\p{IsHiragana}\p{IsKatakana}].*)$""")
+private val ATTACHED_HEADING = Regex("""(?<=[^\s#])(?=#{2,6}(?:[ \t]+\S|[\p{IsHan}\p{IsHiragana}\p{IsKatakana}]))""")
 private val QUOTE = Regex("""^\s*>\s?(.*)$""")
 private val UNORDERED_LIST = Regex("""^(\s*)([-+*])\s+(.+)$""")
 private val ORDERED_LIST = Regex("""^(\s*)(\d+)[.)]\s+(.+)$""")
