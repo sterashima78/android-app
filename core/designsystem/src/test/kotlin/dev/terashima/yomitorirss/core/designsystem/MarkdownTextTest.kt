@@ -63,9 +63,9 @@ class MarkdownTextTest {
       """
       #日本語のタグ
 
-      \`\`\`text
+      ```text
       ##主要な概念### 要望
-      \`\`\`
+      ```
       """.trimIndent(),
     )
 
