@@ -489,7 +489,7 @@ private fun parseMarkdownHeading(line: String): MarkdownBlock.Heading? {
   return MarkdownBlock.Heading(match.groupValues[1].length, match.groupValues[2].trim())
 }
 
-private val HEADING = Regex("""^\s*(#{1,6})[ \t]+(.+)$""")
+private val HEADING = Regex("""^\s*(#{1,6})\s+(.+)$""")
 private val CJK_HEADING = Regex("""^\s*(#{2,6})([\p{IsHan}\p{IsHiragana}\p{IsKatakana}].*)$""")
 private val ATTACHED_HEADING = Regex("""(?<=[^\s#])(?=#{2,6}(?:[ \t]+\S|[\p{IsHan}\p{IsHiragana}\p{IsKatakana}]))""")
 private val QUOTE = Regex("""^\s*>\s?(.*)$""")
