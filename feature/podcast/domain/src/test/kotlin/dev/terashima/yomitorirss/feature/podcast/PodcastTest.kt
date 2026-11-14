@@ -664,7 +664,7 @@ class PodcastTest {
     repository.episodes += PodcastEpisode(
       id = "archive", programId = program.id, title = "既報",
       createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
-      articles = (0 until 769).map { entry("old-$it").toEpisodeArticle() },
+      articles = (0 until 1201).map { entry("old-$it").toEpisodeArticle() },
     )
     val requests = mutableListOf<List<String>>()
     val clusterer = object : PodcastNewsClusterer {
@@ -686,7 +686,42 @@ class PodcastTest {
     assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
     assertEquals(listOf(listOf("new")), requests)
     assertTrue(logs.logs.value.any { it.level == PodcastGenerationLogLevel.WARNING &&
-      it.message.contains("必要65回、上限64回") && it.message.contains("比較予算を超過") })
+      it.message.contains("必要101回、上限100回") && it.message.contains("比較予算を超過") })
+  }
+
+  @Test
+  fun `比較予算100回ちょうどなら既報比較を実行する`() = runSuspend {
+    val program = program()
+    val repository = FakePodcastRepository(program)
+    val now = 5L * 24 * 60 * 60 * 1_000
+    repository.episodes += PodcastEpisode(
+      id = "archive", programId = program.id, title = "既報",
+      createdAtEpochMillis = now - 1_000, status = PodcastEpisodeStatus.ARCHIVED,
+      articles = (0 until 1200).map { entry("old-$it").toEpisodeArticle() },
+    )
+    var comparisonCalls = 0
+    val clusterer = object : PodcastNewsClusterer {
+      override suspend fun cluster(
+        provider: PodcastGenerationProvider,
+        candidates: List<PodcastFeedEntry>,
+      ): PodcastNewsClusteringResult {
+        if (candidates.size > 1) comparisonCalls++
+        return PodcastNewsClusteringResult(
+          candidates.indices.map { listOf(it) },
+          if (candidates.size > 1) PodcastClusteringStatus.SUCCESS else PodcastClusteringStatus.SKIPPED,
+        )
+      }
+    }
+    val logs = RecordingPodcastLogStore()
+    val generated = GeneratePodcastEpisodeUseCase(
+      repository, FakeFeedContentSource(listOf(entry("new"))),
+      RecordingGenerator("原稿"), nowEpochMillis = { now }, newsClusterer = clusterer, logStore = logs,
+    ).generate(program.id) as PodcastGenerationResult.Generated
+
+    assertEquals(listOf("new"), generated.episode.articles.map { it.articleId })
+    assertEquals(100, comparisonCalls)
+    assertTrue(logs.logs.value.any { it.message.contains("比較100回") && it.level == PodcastGenerationLogLevel.INFO })
+    assertTrue(logs.logs.value.none { it.message.contains("比較予算を超過") })
   }
 
   @Test
