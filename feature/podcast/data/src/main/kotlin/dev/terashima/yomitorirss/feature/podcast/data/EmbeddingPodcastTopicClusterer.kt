@@ -6,6 +6,7 @@ import dev.terashima.yomitorirss.feature.podcast.PodcastClusteringStatus
 import dev.terashima.yomitorirss.feature.podcast.PodcastFeedEntry
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationProvider
 import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusterer
+import dev.terashima.yomitorirss.feature.podcast.PodcastPreparedNewsClustering
 import dev.terashima.yomitorirss.feature.podcast.PodcastNewsClusteringResult
 import kotlin.math.sqrt
 import kotlinx.coroutines.CancellationException
@@ -18,28 +19,53 @@ class EmbeddingPodcastTopicClusterer(
   override suspend fun cluster(
     provider: PodcastGenerationProvider,
     candidates: List<PodcastFeedEntry>,
-  ): PodcastNewsClusteringResult {
-    if (candidates.size <= 1) {
-      return PodcastNewsClusteringResult(candidates.indices.map { listOf(it) }, PodcastClusteringStatus.SKIPPED)
-    }
-    return try {
-      // Capture one threshold for this clustering pass, even if the UI changes it during inference.
+  ): PodcastNewsClusteringResult =
+    prepare(provider, candidates).cluster(candidates.indices.toList())
+
+  override suspend fun prepare(
+    provider: PodcastGenerationProvider,
+    entries: List<PodcastFeedEntry>,
+  ): PodcastPreparedNewsClustering {
+    // Capture the threshold and compute every embedding once for this generation pass.
+    // Individual archive chunks and the final fresh/repeated partitions reuse these vectors.
+    val prepared = if (entries.size <= 1) null else try {
       val threshold = similarityThreshold()
-      val vectors = embedding.embed(candidates.map { entry ->
+      val vectors = embedding.embed(entries.map { entry ->
         val summary = entry.feedContent.replace(Regex("\\s+"), " ").take(400)
         "task: clustering | text: ${entry.title.trim()}\n$summary".trim()
       })
-      require(vectors.size == candidates.size && vectors.isNotEmpty())
+      require(vectors.size == entries.size && vectors.isNotEmpty())
       val dimension = vectors.first().size
       require(dimension > 0 && vectors.all { it.size == dimension && it.all(Float::isFinite) })
-      PodcastNewsClusteringResult(groupRelatedTopics(vectors, threshold = threshold), PodcastClusteringStatus.SUCCESS)
+      threshold to vectors
     } catch (cancel: CancellationException) {
       throw cancel
     } catch (_: Exception) {
-      PodcastNewsClusteringResult(
-        candidates.indices.map { listOf(it) },
-        PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR,
-      )
+      null
+    }
+
+    return object : PodcastPreparedNewsClustering {
+      override suspend fun cluster(indices: List<Int>): PodcastNewsClusteringResult {
+        if (indices.size <= 1) {
+          return PodcastNewsClusteringResult(indices.indices.map { listOf(it) }, PodcastClusteringStatus.SKIPPED)
+        }
+        return try {
+          require(indices.all { it in entries.indices })
+          val (threshold, vectors) = requireNotNull(prepared)
+          val selected = indices.map(vectors::get)
+          PodcastNewsClusteringResult(
+            groupRelatedTopics(selected, threshold = threshold),
+            PodcastClusteringStatus.SUCCESS,
+          )
+        } catch (cancel: CancellationException) {
+          throw cancel
+        } catch (_: Exception) {
+          PodcastNewsClusteringResult(
+            indices.indices.map { listOf(it) },
+            PodcastClusteringStatus.FALLBACK_INFERENCE_ERROR,
+          )
+        }
+      }
     }
   }
 }
