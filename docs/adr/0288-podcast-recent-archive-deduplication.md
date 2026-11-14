@@ -57,7 +57,6 @@ For a typical incoming batch of several dozen articles, the prior eight-call Car
 
 This adjustment changes neither the existing embedding classifier, its privacy boundary, nor persisted state. Repeated on-device embedding calls remain bounded but cost more with larger histories; any future performance redesign requires measurement rather than an unbounded inference loop.
 
-
 ## 2026-11-15 refinement: reuse prepared vectors and increase budget to 100
 
 Bounded archive comparison prepares one in-memory set of embeddings for all archive references and incoming candidates. Each 12-item cross-product comparison clusters the corresponding subset of the same vectors, preserving the existing deterministic complete-link algorithm and threshold. The final ordinary and previously-covered partitions also reuse these vectors instead of invoking the embedding runtime again. The prepared vectors are scoped to one generation attempt and are not persisted.
