@@ -82,6 +82,43 @@ class EmbeddingPodcastTopicClustererTest {
     assertEquals(listOf(listOf(0), listOf(1)), result.groups)
   }
 
+  @Test
+  fun `prepared clustering reuses one embedding pass for all archive subsets and final partitions`() = runSuspend {
+    var embeddingCalls = 0
+    var capturedThreshold = 0.95
+    val candidates = (0 until 25).map { entry("old-$it") } + entry("repeat") + entry("fresh")
+    val clusterer = EmbeddingPodcastTopicClusterer(
+      embedding = object : BackgroundTextEmbedding {
+        override suspend fun embed(texts: List<String>): List<FloatArray> {
+          embeddingCalls++
+          assertEquals(27, texts.size)
+          return texts.indices.map { index ->
+            // Only old-24 and repeat share a vector.
+            val dimension = if (index == 25) 24 else index
+            FloatArray(texts.size) { if (it == dimension) 1f else 0f }
+          }
+        }
+      },
+      similarityThreshold = { capturedThreshold },
+    )
+    val prepared = clusterer.prepare(PodcastGenerationProvider.LOCAL, candidates)
+    val first = prepared.cluster((0 until 12).toList() + listOf(25, 26))
+    val last = prepared.cluster(listOf(24, 25, 26))
+    val fresh = prepared.cluster(listOf(26))
+    val repeated = prepared.cluster(listOf(25))
+
+    assertEquals(PodcastClusteringStatus.SUCCESS, first.status)
+    assertTrue(first.groups.all { it.size == 1 })
+    assertEquals(listOf(listOf(0, 1), listOf(2)), last.groups)
+    assertEquals(PodcastClusteringStatus.SKIPPED, fresh.status)
+    assertEquals(PodcastClusteringStatus.SKIPPED, repeated.status)
+    assertEquals(1, embeddingCalls)
+
+    capturedThreshold = 0.70 // Existing session remains independent of later UI edits.
+    assertEquals(listOf(listOf(0, 1), listOf(2)), prepared.cluster(listOf(24, 25, 26)).groups)
+    assertEquals(1, embeddingCalls)
+  }
+
   private fun entry(id: String) = PodcastFeedEntry(id, "source", "headline $id", null, null, null, "body $id")
 }
 
