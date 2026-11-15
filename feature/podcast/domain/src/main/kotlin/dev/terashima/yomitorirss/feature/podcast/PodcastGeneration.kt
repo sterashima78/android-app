@@ -256,10 +256,9 @@ class GeneratePodcastEpisodeUseCase(
     archive: List<PodcastFeedEntry>,
     candidates: List<PodcastFeedEntry>,
   ): PodcastArchiveComparison {
-    val archiveBatches = archive.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
-    val candidateBatches = candidates.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
-    // Never launch an unbounded series of model calls merely to eliminate repeats.
-    // When the comparison budget is exceeded, fail open and retain all new entries.
+    val archiveBatches = archive.indices.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
+    val candidateBatches = candidates.indices.chunked(ARCHIVE_COMPARISON_BATCH_SIZE)
+    // Check the complete budget before starting any embedding work.
     val requiredComparisons = archiveBatches.size.toLong() * candidateBatches.size
     if (requiredComparisons > MAX_ARCHIVE_COMPARISON_CALLS) {
       log(program.id, PodcastGenerationLogLevel.WARNING,
@@ -267,12 +266,27 @@ class GeneratePodcastEpisodeUseCase(
       return PodcastArchiveComparison(candidates)
     }
 
+    // Embeddings belong to one generation attempt and are reused for every comparison
+    // and the two final, separately clustered partitions.
+    val preparationStarted = System.nanoTime()
+    val prepared = try {
+      newsClusterer.prepare(program.provider, archive + candidates)
+    } catch (error: CancellationException) {
+      throw error
+    } catch (_: Exception) {
+      log(program.id, PodcastGenerationLogLevel.WARNING,
+        "既報判定に失敗: 埋め込み準備中の例外。全候補を通常ニュースとして扱います")
+      return PodcastArchiveComparison(candidates)
+    }
+    val preparationMillis = (System.nanoTime() - preparationStarted) / 1_000_000
+    val groupingStarted = System.nanoTime()
+
     val covered = mutableSetOf<Int>()
     for (archiveBatch in archiveBatches) {
-      for ((candidateIndex, candidateBatch) in candidateBatches.withIndex()) {
-        val combined = archiveBatch + candidateBatch
+      for (candidateBatch in candidateBatches) {
+        val indexes = archiveBatch + candidateBatch.map { it + archive.size }
         val result = try {
-          newsClusterer.cluster(program.provider, combined)
+          prepared.cluster(indexes)
         } catch (error: CancellationException) {
           throw error
         } catch (_: Exception) {
@@ -281,8 +295,8 @@ class GeneratePodcastEpisodeUseCase(
           return PodcastArchiveComparison(candidates)
         }
         if (result.status != PodcastClusteringStatus.SUCCESS ||
-          result.groups.flatten().toSet() != combined.indices.toSet() ||
-          result.groups.sumOf { it.size } != combined.size
+          result.groups.flatten().toSet() != indexes.indices.toSet() ||
+          result.groups.sumOf { it.size } != indexes.size
         ) {
           log(program.id, PodcastGenerationLogLevel.WARNING,
             "既報判定に失敗: 分割比較の分類状態${result.status.name}または不正な結果。全候補を通常ニュースとして扱います")
@@ -291,17 +305,23 @@ class GeneratePodcastEpisodeUseCase(
         result.groups
           .filter { group -> group.any { it < archiveBatch.size } }
           .flatMap { group -> group.filter { it >= archiveBatch.size } }
-          .forEach { index ->
-            covered += candidateIndex * ARCHIVE_COMPARISON_BATCH_SIZE + index - archiveBatch.size
-          }
+          .forEach { index -> covered += candidateBatch[index - archiveBatch.size] }
       }
     }
+    val freshIndices = candidates.indices.filterNot { it in covered }
+    val repeatedIndices = candidates.indices.filter { it in covered }
+    val newClustering = freshIndices.takeIf { it.isNotEmpty() }
+      ?.let { prepared.cluster(it.map { index -> index + archive.size }) }
+    val repeatedClustering = repeatedIndices.takeIf { it.isNotEmpty() }
+      ?.let { prepared.cluster(it.map { index -> index + archive.size }) }
+    val groupingMillis = (System.nanoTime() - groupingStarted) / 1_000_000
     log(program.id, PodcastGenerationLogLevel.INFO,
-      "既報判定成功（分割比較）: 参照${archive.size}記事、通常${candidates.size - covered.size}記事、既報${covered.size}記事")
-    // Batch partitions cannot be reused as a global partition; cluster both segments again.
+      "既報判定成功（分割比較）: 参照${archive.size}記事、通常${freshIndices.size}記事、既報${repeatedIndices.size}記事、比較${requiredComparisons}回、準備${preparationMillis}ms、分類${groupingMillis}ms")
     return PodcastArchiveComparison(
-      entries = candidates.filterIndexed { index, _ -> index !in covered },
-      repeatedEntries = candidates.filterIndexed { index, _ -> index in covered },
+      entries = freshIndices.map(candidates::get),
+      repeatedEntries = repeatedIndices.map(candidates::get),
+      clustering = newClustering,
+      repeatedClustering = repeatedClustering,
     )
   }
 
@@ -492,4 +512,4 @@ private const val RECENT_PODCAST_ARCHIVE_MILLIS = 3L * 24 * 60 * 60 * 1_000
 
 private const val MAX_ARCHIVE_COMPARISON_ITEMS = 24
 private const val ARCHIVE_COMPARISON_BATCH_SIZE = 12
-private const val MAX_ARCHIVE_COMPARISON_CALLS = 64
+private const val MAX_ARCHIVE_COMPARISON_CALLS = 100

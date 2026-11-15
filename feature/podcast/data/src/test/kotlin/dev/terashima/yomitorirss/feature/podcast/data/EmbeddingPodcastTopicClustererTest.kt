@@ -82,6 +82,44 @@ class EmbeddingPodcastTopicClustererTest {
     assertEquals(listOf(listOf(0), listOf(1)), result.groups)
   }
 
+  @Test
+  fun `prepared clustering reuses one embedding pass for all archive subsets and final partitions`() = runSuspend {
+    var embeddingCalls = 0
+    var capturedThreshold = 0.95
+    val candidates = (0 until 25).map { entry("old-$it") } +
+      listOf(entry("repeat-1"), entry("repeat-2"), entry("fresh-1"), entry("fresh-2"))
+    val clusterer = EmbeddingPodcastTopicClusterer(
+      embedding = object : BackgroundTextEmbedding {
+        override suspend fun embed(texts: List<String>): List<FloatArray> {
+          embeddingCalls++
+          assertEquals(29, texts.size)
+          return texts.indices.map { index ->
+            // Only the final archived article and the two repeated articles match.
+            val dimension = if (index == 25 || index == 26) 24 else index
+            FloatArray(texts.size) { if (it == dimension) 1f else 0f }
+          }
+        }
+      },
+      similarityThreshold = { capturedThreshold },
+    )
+    val prepared = clusterer.prepare(PodcastGenerationProvider.LOCAL, candidates)
+    val first = prepared.cluster((0 until 12).toList() + listOf(25, 27))
+    val last = prepared.cluster(listOf(24, 25, 27))
+    val fresh = prepared.cluster(listOf(27, 28))
+    val repeated = prepared.cluster(listOf(25, 26))
+
+    assertEquals(PodcastClusteringStatus.SUCCESS, first.status)
+    assertTrue(first.groups.all { it.size == 1 })
+    assertEquals(listOf(listOf(0, 1), listOf(2)), last.groups)
+    assertEquals(listOf(listOf(0), listOf(1)), fresh.groups)
+    assertEquals(listOf(listOf(0, 1)), repeated.groups)
+    assertEquals(1, embeddingCalls)
+
+    capturedThreshold = 0.70 // Existing session remains independent of later UI edits.
+    assertEquals(listOf(listOf(0, 1), listOf(2)), prepared.cluster(listOf(24, 25, 27)).groups)
+    assertEquals(1, embeddingCalls)
+  }
+
   private fun entry(id: String) = PodcastFeedEntry(id, "source", "headline $id", null, null, null, "body $id")
 }
 

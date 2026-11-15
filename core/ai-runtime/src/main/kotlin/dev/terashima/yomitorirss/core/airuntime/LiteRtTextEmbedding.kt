@@ -28,7 +28,9 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
 
   override suspend fun embed(texts: List<String>): List<FloatArray> {
     if (texts.isEmpty()) return emptyList()
+    val modelStarted = System.nanoTime()
     val model = withContext(Dispatchers.IO) { ensureModel() }
+    val modelMillis = (System.nanoTime() - modelStarted) / 1_000_000
     return LocalAiBackgroundTaskGate.withPermit(priority = LocalAiBackgroundTaskPriority.NORMAL) {
       withContext(Dispatchers.IO) {
         EmbeddingEngine(
@@ -39,13 +41,23 @@ class LiteRtTextEmbedding(context: Context) : BackgroundTextEmbedding {
             maxInputLength = 512,
           ),
         ).use { engine ->
+          val initializationStarted = System.nanoTime()
           engine.initialize()
-          texts.chunked(8).flatMap { batch ->
+          val initializationMillis = (System.nanoTime() - initializationStarted) / 1_000_000
+          val embeddingStarted = System.nanoTime()
+          val vectors = texts.chunked(8).flatMap { batch ->
             engine.computeEmbeddingBatch(
               batch.map { listOf(InputData.Text(it)) },
               EmbeddingOptions(normalize = true, outputSize = 256),
             ).map { it.embedding }
           }
+          val embeddingMillis = (System.nanoTime() - embeddingStarted) / 1_000_000
+          // Only counts and durations; never write article text or embeddings to logs.
+          android.util.Log.d(
+            "PodcastEmbedding",
+            "articles=${texts.size}, modelReadyMs=$modelMillis, initializationMs=$initializationMillis, embeddingMs=$embeddingMillis",
+          )
+          vectors
         }
       }
     }

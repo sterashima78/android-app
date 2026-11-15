@@ -306,11 +306,31 @@ data class PodcastNewsClusteringResult(
   val status: PodcastClusteringStatus,
 )
 
+/**
+ * A generation-scoped clustering view. Indices refer to the entries passed to prepare().
+ * Implementations may keep embeddings in memory for multiple subset comparisons.
+ */
+interface PodcastPreparedNewsClustering {
+  suspend fun cluster(indices: List<Int>): PodcastNewsClusteringResult
+}
+
 interface PodcastNewsClusterer {
   suspend fun cluster(
     provider: PodcastGenerationProvider,
     candidates: List<PodcastFeedEntry>,
   ): PodcastNewsClusteringResult
+
+  /** Default adapter preserves behavior for clusterers that do not cache vectors. */
+  suspend fun prepare(
+    provider: PodcastGenerationProvider,
+    entries: List<PodcastFeedEntry>,
+  ): PodcastPreparedNewsClustering {
+    val clusterer = this
+    return object : PodcastPreparedNewsClustering {
+      override suspend fun cluster(indices: List<Int>): PodcastNewsClusteringResult =
+        clusterer.cluster(provider, indices.map(entries::get))
+    }
+  }
 }
 
 object SingletonPodcastNewsClusterer : PodcastNewsClusterer {
