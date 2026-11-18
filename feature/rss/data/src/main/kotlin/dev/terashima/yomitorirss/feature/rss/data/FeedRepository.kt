@@ -52,6 +52,7 @@ class DefaultFeedRepository(
   override suspend fun listFolders(): List<FeedFolder> = store.listFolders()
 
   override suspend fun inspect(input: String): FeedInspection {
+    require(!isRetiredRedditFeedUrl(input)) { "このフィードはサポートを終了しています" }
     val normalized = client.normalizeInputUrl(input)
     require(!isRetiredRedditFeedUrl(normalized)) { "このフィードはサポートを終了しています" }
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
@@ -63,6 +64,7 @@ class DefaultFeedRepository(
   }
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
+    require(!isRetiredRedditFeedUrl(url)) { "このフィードはサポートを終了しています" }
     val normalized = client.normalizeInputUrl(url)
     require(!isRetiredRedditFeedUrl(normalized)) { "このフィードはサポートを終了しています" }
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
