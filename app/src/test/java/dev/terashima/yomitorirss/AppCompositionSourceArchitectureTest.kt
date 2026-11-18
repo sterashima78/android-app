@@ -153,7 +153,6 @@ class AppCompositionSourceArchitectureTest {
     val destinationFiles = listOf(
       "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/NavigationDestination.kt",
       "feature/rss/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/NavigationDestination.kt",
-      "feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/NavigationDestination.kt",
       "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/NavigationDestination.kt",
       "feature/library/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/library/NavigationDestination.kt",
       "feature/mail/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/mail/NavigationDestination.kt",
