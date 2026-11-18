@@ -11,6 +11,10 @@ class RetiredFeedSourcesTest {
     assertTrue(isRetiredRedditFeedUrl("https://old.reddit.com/comments/abc/.rss"))
     assertFalse(isRetiredRedditFeedUrl("https://reddit.com.evil.example/feed"))
     assertFalse(isRetiredRedditFeedUrl("https://example.com/rss.xml"))
-    assertFalse(isRetiredRedditFeedUrl("r/example"))
+    assertTrue(isRetiredRedditFeedUrl("r/example"))
+    assertTrue(isRetiredRedditFeedUrl("WWW.REDDIT.COM/r/example"))
+    assertTrue(isRetiredRedditFeedUrl("reddit.com/r/example/new/.rss"))
+    assertFalse(isRetiredRedditFeedUrl("r/not-a-valid-community/name"))
+    assertFalse(isRetiredRedditFeedUrl("r/"))
   }
 }
