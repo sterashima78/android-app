@@ -1,6 +1,6 @@
 # ADR-0009: Reddit を RSS から独立した feature として扱う
 
-- Status: Accepted
+- Status: Superseded by ADR-0295
 - Date: 2026-08-09
 - Updated: 2026-08-12
 - Supersedes: ADR-0007 の module ownership に関する決定

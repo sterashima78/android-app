@@ -46,7 +46,7 @@ app ownership は executable、presentation、composition の3つの Gradle boun
 ├── composition/
 │   ├── ai/           local / cloud AI primitive composition
 │   ├── background/   startup observer / one-shot scheduler wiring
-│   ├── content/      Article / Bookmark / RSS / Reddit / YouTube graph
+│   ├── content/      Article / Bookmark / RSS / YouTube graph
 │   ├── crossfeature/ owner repository 構築後の cross-feature service composition
 │   ├── health/       Health Connect repository composition
 │   ├── knowledge/    Knowledge persistence/generation と task runtime composition
