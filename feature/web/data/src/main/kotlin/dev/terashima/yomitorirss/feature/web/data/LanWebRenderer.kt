@@ -36,7 +36,6 @@ internal object LanWebRenderer {
     append("<nav class=\"nav\">")
     listOf(
       LanWebViews.UNREAD to "RSS未読",
-      LanWebViews.REDDIT to "Reddit",
       LanWebViews.SAVED to "ブックマーク",
       LanWebViews.READ_LATER to "あとで読む",
       LanWebViews.FEEDS to "RSSフィード",

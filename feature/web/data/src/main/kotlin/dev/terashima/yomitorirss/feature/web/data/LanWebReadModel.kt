@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.feature.web.data
 import dev.terashima.yomitorirss.feature.web.LanWebArticleItem
 import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
 import dev.terashima.yomitorirss.feature.web.LanWebFeedItem
-import dev.terashima.yomitorirss.feature.web.LanWebSourceKind
 
 internal class LanWebReadModel(
   private val contentGateway: LanWebContentGateway,
@@ -11,14 +10,6 @@ internal class LanWebReadModel(
   suspend fun loadHome(requestedView: String?): LanWebHomePage {
     val view = requestedView?.takeIf { it in LanWebViews.all } ?: LanWebViews.UNREAD
     return when (view) {
-      LanWebViews.REDDIT -> LanWebHomePage(
-        view = view,
-        title = "Reddit",
-        content = LanWebContent.Articles(
-          articles = contentGateway.listUnreadArticles().filter { it.sourceKind == LanWebSourceKind.REDDIT },
-          emptyText = "Redditの未読はありません。",
-        ),
-      )
       LanWebViews.SAVED -> LanWebHomePage(
         view = view,
         title = "ブックマーク",
@@ -39,14 +30,14 @@ internal class LanWebReadModel(
         view = view,
         title = "RSSフィード",
         content = LanWebContent.Feeds(
-          feeds = contentGateway.listFeeds().filter { it.sourceKind == LanWebSourceKind.RSS },
+          feeds = contentGateway.listFeeds(),
         ),
       )
       else -> LanWebHomePage(
         view = LanWebViews.UNREAD,
         title = "RSS未読",
         content = LanWebContent.Articles(
-          articles = contentGateway.listUnreadArticles().filter { it.sourceKind == LanWebSourceKind.RSS },
+          articles = contentGateway.listUnreadArticles(),
           emptyText = "RSSの未読記事はありません。",
         ),
       )
@@ -73,10 +64,8 @@ internal sealed interface LanWebContent {
 
 internal object LanWebViews {
   const val UNREAD = "unread"
-  const val REDDIT = "reddit"
   const val SAVED = "saved"
   const val READ_LATER = "read-later"
   const val FEEDS = "feeds"
 
-  val all: Set<String> = setOf(UNREAD, REDDIT, SAVED, READ_LATER, FEEDS)
 }

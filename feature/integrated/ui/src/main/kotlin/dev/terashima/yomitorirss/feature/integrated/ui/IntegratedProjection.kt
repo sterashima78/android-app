@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.feature.integrated.ui
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
-import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssUiState
 import dev.terashima.yomitorirss.feature.rss.recommendationAnnotationFor
 import dev.terashima.yomitorirss.feature.rss.recommendationScoreFor
@@ -11,7 +10,6 @@ import java.time.Instant
 
 internal sealed interface IntegratedTarget {
   data class Rss(val article: Article) : IntegratedTarget
-  data class Reddit(val article: Article) : IntegratedTarget
   data class Mail(val thread: MailThread) : IntegratedTarget
 }
 
@@ -22,7 +20,6 @@ internal data class IntegratedEntry(
 
 internal fun integratedEntries(
   rssState: RssUiState,
-  redditState: RedditUiState,
   mailState: MailUiState,
   tab: IntegratedTab = IntegratedTab.UNREAD,
   newestFirst: Boolean = true,
@@ -46,9 +43,6 @@ internal fun integratedEntries(
               ),
             )
           }
-        redditState.unread
-          .filterNot { it.id in redditState.hiddenArticleIds }
-          .forEach { add(articleEntry(it, IntegratedSource.REDDIT, IntegratedTarget.Reddit(it))) }
         mailState.threads
           .filter { it.isUnread && it.isInInbox }
           .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
@@ -58,9 +52,6 @@ internal fun integratedEntries(
         rssState.readLater
           .filterNot { it.article.id in rssState.hiddenArticleIds }
           .forEach { saved -> add(articleEntry(saved.article, IntegratedSource.RSS, IntegratedTarget.Rss(saved.article))) }
-        redditState.readLater
-          .filterNot { it.article.id in redditState.hiddenArticleIds }
-          .forEach { saved -> add(articleEntry(saved.article, IntegratedSource.REDDIT, IntegratedTarget.Reddit(saved.article))) }
         mailState.threads
           .filter(MailThread::isReadLater)
           .forEach { thread -> add(mailEntry(thread, accountLabels[thread.accountId] ?: thread.accountId)) }
@@ -71,11 +62,6 @@ internal fun integratedEntries(
           .filterNot { it.id in rssState.hiddenArticleIds }
           .forEach {
             add(articleEntry(it, IntegratedSource.RSS, IntegratedTarget.Rss(it), it.historyTimeMillis()))
-          }
-        redditState.history
-          .filterNot { it.id in redditState.hiddenArticleIds }
-          .forEach {
-            add(articleEntry(it, IntegratedSource.REDDIT, IntegratedTarget.Reddit(it), it.historyTimeMillis()))
           }
         mailState.threads
           .filter { !it.isUnread && it.isInInbox }

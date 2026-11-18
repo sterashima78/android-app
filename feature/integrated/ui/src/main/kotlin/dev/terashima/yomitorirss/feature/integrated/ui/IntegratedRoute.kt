@@ -18,23 +18,19 @@ import androidx.compose.ui.Modifier
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
 import dev.terashima.yomitorirss.feature.mail.Mailbox
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 
 @Composable
 fun IntegratedRoute(
   rssViewModel: RssViewModel,
-  redditViewModel: RedditViewModel,
   feedViewModel: FeedViewModel,
   mailViewModel: MailViewModel,
   onOpenArticle: (Article) -> Unit,
-  onSummarize: (Article) -> Unit,
   onNavigateToMail: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val rssState by rssViewModel.state.collectAsState()
-  val redditState by redditViewModel.state.collectAsState()
   val feedState by feedViewModel.state.collectAsState()
   val mailState by mailViewModel.state.collectAsState()
   val snackbarHostState = remember { SnackbarHostState() }
@@ -68,11 +64,9 @@ fun IntegratedRoute(
   }
 
   val initialized = rssState.initialized &&
-    redditState.initialized &&
     mailState.initialized
   val entries = integratedEntries(
     rssState = rssState,
-    redditState = redditState,
     mailState = mailState,
     tab = selectedTab,
     newestFirst = newestFirst,
@@ -80,7 +74,6 @@ fun IntegratedRoute(
   val targetsByKey = entries.associate { it.item.key to it.target }
   val dispatcher = integratedTargetDispatcher(
     rssViewModel = rssViewModel,
-    redditViewModel = redditViewModel,
     mailViewModel = mailViewModel,
     onOpenArticle = onOpenArticle,
     onOpenMail = { thread ->
@@ -98,14 +91,12 @@ fun IntegratedRoute(
         selectedTab = selectedTab,
         items = entries.map(IntegratedEntry::item),
         isRefreshing = feedState.refreshing ||
-          redditState.refreshing ||
           mailState.loading,
         newestFirst = newestFirst,
         onToggleDateOrder = { newestFirst = !newestFirst },
         onSelectTab = { selectedTabName = it.name },
         onRefresh = {
           feedViewModel.refresh()
-          redditViewModel.refresh()
           mailViewModel.refresh()
         },
         onMarkProcessed = { item -> dispatcher.markProcessed(targetsByKey[item.key]) },
@@ -124,11 +115,7 @@ fun IntegratedRoute(
           targetsByKey[item.key]?.let { target ->
             integratedItemActions(
               target = target,
-              redditState = redditState,
               onOpenArticle = onOpenArticle,
-              onSummarize = onSummarize,
-              onSubscribeRedditThread = redditViewModel::subscribeThread,
-              onUnsubscribeRedditThread = redditViewModel::unsubscribeThread,
             )
           }.orEmpty()
         },

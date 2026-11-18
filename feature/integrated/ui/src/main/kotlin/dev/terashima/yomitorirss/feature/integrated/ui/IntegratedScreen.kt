@@ -68,7 +68,6 @@ enum class IntegratedTab(val label: String) {
 enum class IntegratedSource(val label: String) {
   ALL("すべて"),
   RSS("RSS"),
-  REDDIT("Reddit"),
   MAIL("メール"),
 }
 
@@ -439,11 +438,6 @@ internal fun integratedSwipeActions(
       right = IntegratedSwipeActionSpec("ブックマーク", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.SAVE),
       farRight = IntegratedSwipeActionSpec("あとで読む", IntegratedSwipeTone.TERTIARY, true, IntegratedSwipeOperation.DEFER),
     )
-    IntegratedSource.REDDIT -> IntegratedSwipeActions(
-      left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, true, IntegratedSwipeOperation.MARK_PROCESSED),
-      right = IntegratedSwipeActionSpec("ブックマーク", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.SAVE),
-      farRight = IntegratedSwipeActionSpec("あとで読む", IntegratedSwipeTone.TERTIARY, true, IntegratedSwipeOperation.DEFER),
-    )
     IntegratedSource.MAIL -> IntegratedSwipeActions(
       left = IntegratedSwipeActionSpec("既読", IntegratedSwipeTone.PRIMARY, true, IntegratedSwipeOperation.MARK_PROCESSED),
       right = if (item.isDeferred) {
@@ -457,8 +451,7 @@ internal fun integratedSwipeActions(
   }
 
   IntegratedTab.READ_LATER -> when (item.source) {
-    IntegratedSource.RSS,
-    IntegratedSource.REDDIT -> IntegratedSwipeActions(
+    IntegratedSource.RSS -> IntegratedSwipeActions(
       left = IntegratedSwipeActionSpec("ブックマーク解除", IntegratedSwipeTone.ERROR, true, IntegratedSwipeOperation.UNSAVE),
       right = IntegratedSwipeActionSpec("未分類へ", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.REMOVE_DEFERRED),
       farRight = null,
@@ -478,7 +471,6 @@ internal fun integratedSwipeActions(
 
   IntegratedTab.HISTORY -> when (item.source) {
     IntegratedSource.RSS,
-    IntegratedSource.REDDIT,
     IntegratedSource.MAIL -> IntegratedSwipeActions(
       left = null,
       right = IntegratedSwipeActionSpec("未読に戻す", IntegratedSwipeTone.SECONDARY, true, IntegratedSwipeOperation.MARK_UNREAD),
@@ -520,7 +512,6 @@ private fun emptyMessage(tab: IntegratedTab, source: IntegratedSource): String =
 private fun IntegratedSource.icon(): ImageVector = when (this) {
   IntegratedSource.ALL,
   IntegratedSource.RSS -> Icons.Default.RssFeed
-  IntegratedSource.REDDIT -> Icons.Default.Forum
   IntegratedSource.MAIL -> Icons.Default.Email
 }
 
