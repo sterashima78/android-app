@@ -68,4 +68,5 @@ internal object LanWebViews {
   const val READ_LATER = "read-later"
   const val FEEDS = "feeds"
 
+  val all: Set<String> = setOf(UNREAD, SAVED, READ_LATER, FEEDS)
 }
