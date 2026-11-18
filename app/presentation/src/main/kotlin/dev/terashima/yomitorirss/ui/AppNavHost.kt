@@ -8,7 +8,6 @@ import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkEditController
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.RedditRouteController
 import dev.terashima.yomitorirss.feature.rss.RssRouteController
 
 @Composable
@@ -17,7 +16,6 @@ internal fun AppNavHost(
   modifier: Modifier,
   routeDependencies: AppRouteDependencies,
   rssController: RssRouteController,
-  redditController: RedditRouteController,
   bookmarkEditController: BookmarkEditController,
   biometricLockEnabled: Boolean,
   onBiometricLockEnabledChange: (Boolean) -> Unit,
@@ -40,11 +38,6 @@ internal fun AppNavHost(
       routeDependencies = routeDependencies,
       rssController = rssController,
       bookmarkEditController = bookmarkEditController,
-      onOpenArticle = onOpenArticle,
-    )
-    registerRedditDestinations(
-      routeDependencies = routeDependencies,
-      redditController = redditController,
       onOpenArticle = onOpenArticle,
     )
     registerBookmarkDestinations(

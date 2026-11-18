@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -47,9 +46,6 @@ import androidx.compose.ui.unit.dp
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkTab
 import dev.terashima.yomitorirss.feature.bookmark.bookmarkTabForRoute
 import dev.terashima.yomitorirss.feature.bookmark.routeForBookmarkTab
-import dev.terashima.yomitorirss.feature.reddit.RedditTab
-import dev.terashima.yomitorirss.feature.reddit.redditTabForRoute
-import dev.terashima.yomitorirss.feature.reddit.routeForRedditTab
 import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RssTab
 import dev.terashima.yomitorirss.feature.rss.routeForRssTab
@@ -81,7 +77,6 @@ internal fun AppDrawerContent(
               imageVector = when (section) {
                 AppSection.HOME -> Icons.Default.Home
                 AppSection.RSS -> Icons.Default.RssFeed
-                AppSection.REDDIT -> Icons.Default.Forum
                 AppSection.BOOKMARKS -> Icons.Default.Bookmark
                 AppSection.LIBRARY -> Icons.Default.LibraryBooks
                 AppSection.VIDEO -> Icons.Default.VideoLibrary
@@ -177,26 +172,6 @@ internal fun AppBottomBar(
                 RssTab.READ_LATER -> Icons.Default.AccessTime
                 RssTab.FEEDS -> Icons.Default.Folder
                 RssTab.SETTINGS -> Icons.Default.Settings
-              },
-              contentDescription = tab.label,
-            )
-          },
-          label = { Text(tab.label, maxLines = 1) },
-        )
-      }
-    }
-
-    AppSection.REDDIT -> NavigationBar {
-      RedditTab.entries.forEach { tab ->
-        NavigationBarItem(
-          selected = redditTabForRoute(selectedRoute) == tab,
-          onClick = { onSelectRoute(routeForRedditTab(tab)) },
-          icon = {
-            Icon(
-              imageVector = when (tab) {
-                RedditTab.UNREAD -> Icons.Default.Forum
-                RedditTab.READ_LATER -> Icons.Default.AccessTime
-                RedditTab.SUBSCRIPTIONS -> Icons.Default.Checklist
               },
               contentDescription = tab.label,
             )

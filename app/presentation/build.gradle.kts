@@ -144,8 +144,6 @@ dependencies {
   implementation(project(":feature:mail:ui"))
   implementation(project(":feature:podcast:domain"))
   implementation(project(":feature:podcast:ui"))
-  implementation(project(":feature:reddit:domain"))
-  implementation(project(":feature:reddit:ui"))
   implementation(project(":feature:rss:domain"))
   implementation(project(":feature:rss:ui"))
   implementation(project(":feature:summary:domain"))

@@ -23,7 +23,6 @@ dependencies {
   implementation(project(":feature:bookmark:domain"))
   implementation(project(":feature:knowledge:domain"))
   implementation(project(":feature:library:domain"))
-  implementation(project(":feature:reddit:domain"))
   implementation(project(":feature:rss:domain"))
   implementation(project(":feature:summary:domain"))
   implementation(project(":feature:task:domain"))

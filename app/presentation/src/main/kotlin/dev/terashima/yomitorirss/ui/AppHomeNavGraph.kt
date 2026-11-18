@@ -12,10 +12,8 @@ import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.integrated.ui.IntegratedRoute
 import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
-import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 
 internal fun NavGraphBuilder.registerHomeDestination(
   navController: NavHostController,
@@ -24,18 +22,14 @@ internal fun NavGraphBuilder.registerHomeDestination(
 ) {
   composable(INTEGRATED_ROUTE) {
     val rssViewModel: RssViewModel = viewModel(factory = routeDependencies.rssViewModelFactory)
-    val redditViewModel: RedditViewModel = viewModel(factory = routeDependencies.redditViewModelFactory)
     val feedViewModel: FeedViewModel = viewModel(factory = routeDependencies.feedViewModelFactory)
     val mailViewModel: MailViewModel = viewModel(factory = routeDependencies.mailViewModelFactory)
-    val summaryViewModel: SummaryViewModel = viewModel(factory = routeDependencies.summaryViewModelFactory)
     IntegratedRoute(
       modifier = Modifier.fillMaxSize(),
       rssViewModel = rssViewModel,
-      redditViewModel = redditViewModel,
       feedViewModel = feedViewModel,
       mailViewModel = mailViewModel,
       onOpenArticle = onOpenArticle,
-      onSummarize = { article -> summaryViewModel.summarize(article) },
       onNavigateToMail = { navController.navigateTopLevel(MAIL_ROUTE) },
     )
   }

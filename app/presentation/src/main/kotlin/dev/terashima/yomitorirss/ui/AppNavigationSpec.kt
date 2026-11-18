@@ -23,10 +23,6 @@ import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
 import dev.terashima.yomitorirss.feature.mail.MAIL_TITLE
 import dev.terashima.yomitorirss.feature.podcast.PODCAST_ROUTE
 import dev.terashima.yomitorirss.feature.podcast.PODCAST_TITLE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.redditDestinationTitle
 import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_SETTINGS_ROUTE
@@ -45,7 +41,6 @@ import dev.terashima.yomitorirss.feature.x.X_TITLE
 
 internal enum class FeatureMessageSource {
   RSS,
-  REDDIT,
   FEED,
   SUMMARY,
   BOOKMARK,
@@ -58,9 +53,6 @@ internal val allAppRoutes: Set<String> = linkedSetOf(
   RSS_UNREAD_ROUTE,
   RSS_READ_LATER_ROUTE,
   PODCAST_ROUTE,
-  REDDIT_UNREAD_ROUTE,
-  REDDIT_READ_LATER_ROUTE,
-  REDDIT_SUBSCRIPTIONS_ROUTE,
   BOOKMARKS_ROUTE,
   RSS_FEEDS_ROUTE,
   RSS_SETTINGS_ROUTE,
@@ -84,7 +76,6 @@ internal val allAppRoutes: Set<String> = linkedSetOf(
 internal fun String.featureMessageSources(): Set<FeatureMessageSource> = when (this) {
   INTEGRATED_ROUTE -> setOf(
     FeatureMessageSource.RSS,
-    FeatureMessageSource.REDDIT,
     FeatureMessageSource.FEED,
     FeatureMessageSource.SUMMARY,
   )
@@ -96,12 +87,6 @@ internal fun String.featureMessageSources(): Set<FeatureMessageSource> = when (t
   )
   RSS_FEEDS_ROUTE,
   RSS_SETTINGS_ROUTE -> setOf(FeatureMessageSource.FEED)
-  REDDIT_UNREAD_ROUTE,
-  REDDIT_READ_LATER_ROUTE -> setOf(
-    FeatureMessageSource.REDDIT,
-    FeatureMessageSource.SUMMARY,
-  )
-  REDDIT_SUBSCRIPTIONS_ROUTE -> setOf(FeatureMessageSource.REDDIT)
   BOOKMARKS_ROUTE,
   BOOKMARK_TAGS_ROUTE -> setOf(
     FeatureMessageSource.BOOKMARK,
@@ -122,8 +107,6 @@ internal fun String.usesSummaryOverlay(): Boolean = when (this) {
   INTEGRATED_ROUTE,
   RSS_UNREAD_ROUTE,
   RSS_READ_LATER_ROUTE,
-  REDDIT_UNREAD_ROUTE,
-  REDDIT_READ_LATER_ROUTE,
   BOOKMARKS_ROUTE,
   BOOKMARK_TAGS_ROUTE -> true
   else -> false
@@ -141,7 +124,6 @@ internal fun String.appSection(): AppSection = when (this) {
   INTEGRATED_ROUTE -> AppSection.HOME
   RSS_UNREAD_ROUTE, RSS_READ_LATER_ROUTE, RSS_FEEDS_ROUTE, RSS_SETTINGS_ROUTE -> AppSection.RSS
   PODCAST_ROUTE -> AppSection.PODCAST
-  REDDIT_UNREAD_ROUTE, REDDIT_READ_LATER_ROUTE, REDDIT_SUBSCRIPTIONS_ROUTE -> AppSection.REDDIT
   BOOKMARKS_ROUTE, BOOKMARK_FOLDERS_ROUTE, BOOKMARK_TAGS_ROUTE, BOOKMARK_IMPORT_ROUTE -> AppSection.BOOKMARKS
   LIBRARY_ROUTE -> AppSection.LIBRARY
   VIDEO_ROUTE -> AppSection.VIDEO
@@ -159,7 +141,6 @@ internal fun String.appSection(): AppSection = when (this) {
 }
 
 internal fun String.screenTitle(): String = rssDestinationTitle(this)
-  ?: redditDestinationTitle(this)
   ?: bookmarkDestinationTitle(this)
   ?: when (this) {
     INTEGRATED_ROUTE -> INTEGRATED_TITLE
@@ -183,7 +164,6 @@ internal fun AppSection.defaultRoute(): String = when (this) {
   AppSection.HOME -> INTEGRATED_ROUTE
   AppSection.RSS -> RSS_UNREAD_ROUTE
   AppSection.PODCAST -> PODCAST_ROUTE
-  AppSection.REDDIT -> REDDIT_UNREAD_ROUTE
   AppSection.BOOKMARKS -> BOOKMARKS_ROUTE
   AppSection.LIBRARY -> LIBRARY_ROUTE
   AppSection.VIDEO -> VIDEO_ROUTE

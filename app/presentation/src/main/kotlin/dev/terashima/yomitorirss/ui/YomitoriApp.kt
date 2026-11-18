@@ -22,7 +22,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.bookmark.rememberBookmarkEditController
 import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.rememberRedditRouteController
 import dev.terashima.yomitorirss.feature.rss.rememberRssRouteController
 import dev.terashima.yomitorirss.feature.x.X_ROUTE
 import kotlinx.coroutines.flow.Flow
@@ -47,7 +46,6 @@ fun YomitoriApp(
   val drawerState = rememberDrawerState(DrawerValue.Closed)
   val scope = rememberCoroutineScope()
   val rssController = rememberRssRouteController()
-  val redditController = rememberRedditRouteController()
   val bookmarkEditController = rememberBookmarkEditController()
   val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
 
@@ -109,7 +107,6 @@ fun YomitoriApp(
             viewModelStoreOwner = owner,
             routeDependencies = routeDependencies,
             rssController = rssController,
-            redditController = redditController,
             onOpenDrawer = openDrawer,
           )
         }
@@ -126,7 +123,6 @@ fun YomitoriApp(
         modifier = Modifier.fillMaxSize().padding(padding),
         routeDependencies = routeDependencies,
         rssController = rssController,
-        redditController = redditController,
         bookmarkEditController = bookmarkEditController,
         biometricLockEnabled = biometricLockEnabled,
         onBiometricLockEnabledChange = onBiometricLockEnabledChange,
