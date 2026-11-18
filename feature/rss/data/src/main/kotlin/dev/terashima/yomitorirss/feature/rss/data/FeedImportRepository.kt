@@ -7,6 +7,7 @@ import dev.terashima.yomitorirss.core.database.DatabaseConnection
 import dev.terashima.yomitorirss.feature.article.ContentSourceGateway
 import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
 import dev.terashima.yomitorirss.feature.rss.FeedOpmlImportResult
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
 import dev.terashima.yomitorirss.feature.rss.data.network.ParsedFeed
 
 class DefaultFeedImportRepository(
@@ -29,7 +30,7 @@ class DefaultFeedImportRepository(
 
     parsed.feeds.forEach { entry ->
       val key = normalizedFeedUrlKey(entry.feedUrl)
-      if (key == null) {
+      if (key == null || isRetiredRedditFeedUrl(entry.feedUrl)) {
         skipped += 1
       } else if (!knownUrls.add(key)) {
         duplicates += 1

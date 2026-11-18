@@ -16,9 +16,9 @@ import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractor
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataExtractorTestResult
 import dev.terashima.yomitorirss.feature.library.WebLibraryMetadataRefreshResult
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
+import dev.terashima.yomitorirss.feature.rss.isActiveRssArticle
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.summary.SummaryViewModel
 import dev.terashima.yomitorirss.platform.authorization.LibraryAuthorizationDependencies
@@ -33,15 +33,7 @@ internal class AppContentRouteDependencies(
       bookmarkRepository = container.bookmarkRepository,
       recommendationService = container.rssRecommendationService,
       recommendationTaskScheduler = container.rssRecommendationTaskScheduler,
-      articleSelector = RedditSourceBoundary::isNonRedditArticle,
-    )
-  }
-
-  val redditViewModelFactory: RedditViewModel.Factory by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    RedditViewModel.Factory(
-      redditRepository = container.redditRepository,
-      articleRepository = container.articleRepository,
-      bookmarkRepository = container.bookmarkRepository,
+      articleSelector = ::isActiveRssArticle,
     )
   }
 
@@ -50,8 +42,8 @@ internal class AppContentRouteDependencies(
       repository = container.feedRepository,
       refreshFeeds = container.refreshFeedsUseCase,
       imports = container.feedImportRepository,
-      feedSelector = { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) },
-      canAddInput = RedditSourceBoundary::isRssSubscriptionInput,
+      feedSelector = { feed -> !isRetiredRedditFeedUrl(feed.feedUrl) },
+      canAddInput = { input -> !isRetiredRedditFeedUrl(input) },
     )
   }
 

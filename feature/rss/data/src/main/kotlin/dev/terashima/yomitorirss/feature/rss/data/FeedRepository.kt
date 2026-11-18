@@ -12,6 +12,7 @@ import dev.terashima.yomitorirss.feature.rss.FeedFolder
 import dev.terashima.yomitorirss.feature.rss.FeedInspection
 import dev.terashima.yomitorirss.feature.rss.FeedRefreshContext
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingPreview
 import dev.terashima.yomitorirss.feature.rss.RssWebScrapingRule
 import dev.terashima.yomitorirss.feature.rss.data.network.FeedClient
@@ -47,11 +48,12 @@ class DefaultFeedRepository(
 
   override val changes: StateFlow<Long> = dataChanges.version
 
-  override suspend fun listFeeds(): List<Feed> = store.listFeeds()
+  override suspend fun listFeeds(): List<Feed> = store.listFeeds().filterNot { isRetiredRedditFeedUrl(it.feedUrl) }
   override suspend fun listFolders(): List<FeedFolder> = store.listFolders()
 
   override suspend fun inspect(input: String): FeedInspection {
     val normalized = client.normalizeInputUrl(input)
+    require(!isRetiredRedditFeedUrl(normalized)) { "このフィードはサポートを終了しています" }
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
     return if (customRule != null) {
       FeedInspection(directFeedUrl = normalized)
@@ -62,6 +64,7 @@ class DefaultFeedRepository(
 
   override suspend fun addFeed(url: String, markExistingArticlesRead: Boolean) {
     val normalized = client.normalizeInputUrl(url)
+    require(!isRetiredRedditFeedUrl(normalized)) { "このフィードはサポートを終了しています" }
     val customRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), normalized)
     val result = if (customRule != null) {
       requireWebScrapingClient().fetchFeed(normalized, customRule)
@@ -138,6 +141,7 @@ class DefaultFeedRepository(
     failureRetryMillis: Long,
   ): Boolean {
     require(minimumAgeMillis >= 0 && failureRetryMillis >= 0)
+    if (isRetiredRedditFeedUrl(feed.feedUrl)) return false
     // All callers (UI, periodic worker, widget and subscriptions) share this repository instance.
     val lock = refreshLocks.computeIfAbsent(feed.id) { Mutex() }
     val observedAttempt = lastAttempts[feed.id]
@@ -151,6 +155,7 @@ class DefaultFeedRepository(
 
       // Never trust the caller's snapshot: a different route may have refreshed the feed.
       val current = store.listFeeds().firstOrNull { it.id == feed.id } ?: return@withLock false
+      if (isRetiredRedditFeedUrl(current.feedUrl)) return@withLock false
       val now = System.currentTimeMillis()
       val matchingRule = findMatchingRssWebScrapingRule(webScrapingRules.list(), current.feedUrl)
       val effectiveMinimumAgeMillis = rssEffectiveMinimumAgeMillis(

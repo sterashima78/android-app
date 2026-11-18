@@ -25,10 +25,9 @@ import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkContentQue
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkEnrichmentRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkImportRepository
 import dev.terashima.yomitorirss.feature.bookmark.data.DefaultBookmarkRepository
-import dev.terashima.yomitorirss.feature.reddit.RedditRepository
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
-import dev.terashima.yomitorirss.feature.reddit.data.DefaultRedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedImportRepository
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
+import dev.terashima.yomitorirss.feature.rss.isActiveRssArticle
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RefreshFeedsUseCase
 import dev.terashima.yomitorirss.feature.rss.data.RssRefreshPreferences
@@ -147,7 +146,7 @@ internal class AppContentRuntimeDependencies(
       context = application,
       articleRepository = articleRepository,
       repository = rssRecommendationRepository,
-      articleSelector = RedditSourceBoundary::isNonRedditArticle,
+      articleSelector = ::isActiveRssArticle,
     )
   }
 
@@ -157,17 +156,13 @@ internal class AppContentRuntimeDependencies(
       contentSourceGateway = contentSourceGateway,
       dataChanges = dataChanges,
       onFeedUpdated = { feed ->
-        if (RedditSourceBoundary.isNonRedditFeed(feed.feedUrl)) {
+        if (!isRetiredRedditFeedUrl(feed.feedUrl)) {
           rssRecommendationTaskScheduler.enqueueForFeed(feed.id)
         }
       },
       applicationContext = application,
       httpClient = httpClient,
     )
-  }
-
-  val redditRepository: RedditRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-    DefaultRedditRepository(feedRepository)
   }
 
   val feedImportRepository: FeedImportRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
@@ -200,7 +195,7 @@ internal class AppContentRuntimeDependencies(
       articleRepository = articleRepository,
       feedRepository = feedRepository,
       bookmarkRepository = bookmarkRepository,
-      sourceSelector = RedditSourceBoundary::isNonRedditFeed,
+      sourceSelector = { url -> !isRetiredRedditFeedUrl(url) },
       automaticIntervalMinutes = {
         BackgroundDataFetchPreferences(application).integratedRefreshIntervalMinutes
       },

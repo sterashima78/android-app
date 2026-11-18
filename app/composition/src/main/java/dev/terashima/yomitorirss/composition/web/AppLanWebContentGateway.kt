@@ -3,13 +3,13 @@ package dev.terashima.yomitorirss.composition.web
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkRepository
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.rss.Feed
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
+import dev.terashima.yomitorirss.feature.rss.isActiveRssArticle
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.web.LanWebArticleItem
 import dev.terashima.yomitorirss.feature.web.LanWebContentGateway
 import dev.terashima.yomitorirss.feature.web.LanWebFeedItem
-import dev.terashima.yomitorirss.feature.web.LanWebSourceKind
 
 internal class AppLanWebContentGateway(
   private val articleRepository: ArticleRepository,
@@ -17,7 +17,7 @@ internal class AppLanWebContentGateway(
   private val feedRepository: FeedRepository,
 ) : LanWebContentGateway {
   override suspend fun listUnreadArticles(): List<LanWebArticleItem> =
-    articleRepository.listUnreadArticles().map(::articleItem)
+    articleRepository.listUnreadArticles().filter(::isActiveRssArticle).map(::articleItem)
 
   override suspend fun listSavedArticles(): List<LanWebArticleItem> =
     bookmarkRepository.listSavedArticles(null, null).map { bookmarked ->
@@ -30,7 +30,7 @@ internal class AppLanWebContentGateway(
     }
 
   override suspend fun listFeeds(): List<LanWebFeedItem> =
-    feedRepository.listFeeds().map(::feedItem)
+    feedRepository.listFeeds().filterNot { isRetiredRedditFeedUrl(it.feedUrl) }.map(::feedItem)
 
   private fun articleItem(
     article: Article,
@@ -40,11 +40,6 @@ internal class AppLanWebContentGateway(
     url = article.url,
     sourceTitle = article.sourceTitle,
     publishedAt = article.publishedAt,
-    sourceKind = if (RedditSourceBoundary.isRedditArticle(article)) {
-      LanWebSourceKind.REDDIT
-    } else {
-      LanWebSourceKind.RSS
-    },
     tagNames = tagNames,
   )
 
@@ -52,10 +47,5 @@ internal class AppLanWebContentGateway(
     title = feed.title,
     feedUrl = feed.feedUrl,
     siteUrl = feed.siteUrl,
-    sourceKind = if (RedditSourceBoundary.isNonRedditFeed(feed.feedUrl)) {
-      LanWebSourceKind.RSS
-    } else {
-      LanWebSourceKind.REDDIT
-    },
   )
 }
