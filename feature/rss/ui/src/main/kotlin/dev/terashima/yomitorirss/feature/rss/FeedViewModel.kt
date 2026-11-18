@@ -131,7 +131,7 @@ class FeedViewModel(
 
   fun inspectAndAddFeed(input: String) {
     if (!canAddInput(input)) {
-      _state.update { it.copy(message = "このURLはRSSではなく専用画面から追加してください") }
+      _state.update { it.copy(message = "この情報源の購読機能は終了しました") }
       return
     }
     if (_state.value.addFeedProgress != null) {
@@ -176,7 +176,7 @@ class FeedViewModel(
       _state.update {
         it.copy(
           addFeedProgress = null,
-          message = "このフィードはRSSではなく専用画面から追加してください",
+          message = "この情報源の購読機能は終了しました",
         )
       }
       return
