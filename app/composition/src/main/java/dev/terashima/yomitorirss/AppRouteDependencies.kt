@@ -17,7 +17,6 @@ class AppRouteDependencies(
   val audioPlaybackController: AudioPlaybackController = container.audioPlaybackController
   val podcastViewModelFactory get() = container.podcastViewModelFactory
   val rssViewModelFactory get() = content.rssViewModelFactory
-  val redditViewModelFactory get() = content.redditViewModelFactory
   val feedViewModelFactory get() = content.feedViewModelFactory
   val bookmarkViewModelFactory get() = content.bookmarkViewModelFactory
   val reprocessBookmarkEnrichment get() = content.reprocessBookmarkEnrichment

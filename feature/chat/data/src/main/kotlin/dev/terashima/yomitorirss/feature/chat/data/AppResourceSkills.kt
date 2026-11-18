@@ -8,9 +8,9 @@ import dev.terashima.yomitorirss.feature.chat.AgentSkill
 import dev.terashima.yomitorirss.feature.chat.AgentTool
 import dev.terashima.yomitorirss.feature.chat.AgentToolArgument
 import dev.terashima.yomitorirss.feature.chat.AgentToolDefinition
-import dev.terashima.yomitorirss.feature.reddit.RedditRepository
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
+import dev.terashima.yomitorirss.feature.rss.isActiveRssArticle
 import dev.terashima.yomitorirss.feature.summary.SummaryRepository
 import dev.terashima.yomitorirss.feature.task.TaskItem
 import dev.terashima.yomitorirss.feature.task.TaskRepository
@@ -20,12 +20,10 @@ fun createAppResourceSkills(
   articleRepository: ArticleRepository,
   bookmarkRepository: BookmarkRepository,
   feedRepository: FeedRepository,
-  redditRepository: RedditRepository,
   summaryRepository: SummaryRepository,
   taskRepository: TaskRepository,
 ): List<AgentSkill> = listOf(
   rssSkill(articleRepository, feedRepository),
-  redditSkill(articleRepository, redditRepository),
   bookmarkSkill(bookmarkRepository, summaryRepository),
   historySkill(articleRepository),
   taskSkill(taskRepository),
@@ -36,18 +34,18 @@ private fun rssSkill(
   feedRepository: FeedRepository,
 ): AgentSkill = AgentSkill(
   name = "rss-reader",
-  description = "購読中のRSSフィードとRSSの未読記事を参照するSkill。Redditは含まない。",
-  instructions = "RSS、購読フィード、RSSの未読記事について質問されたときに利用する。Redditはreddit-readerを利用する。データの変更は行わない。",
+  description = "購読中のRSSフィードとRSSの未読記事を参照するSkill。",
+  instructions = "RSS、購読フィード、RSSの未読記事について質問されたときに利用する。データの変更は行わない。",
   tools = listOf(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "list_feeds",
-        description = "購読中のRSSフィードを一覧・検索する。Reddit購読は含まない。最大10件の候補を返す。",
+        description = "購読中のRSSフィードを一覧・検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       val feeds = rankByQuery(
-        items = feedRepository.listFeeds().filter { feed -> RedditSourceBoundary.isNonRedditFeed(feed.feedUrl) },
+        items = feedRepository.listFeeds().filter { feed -> !isRetiredRedditFeedUrl(feed.feedUrl) },
         query = arguments.query(),
       ) { feed ->
         listOf(
@@ -63,57 +61,12 @@ private fun rssSkill(
     LambdaAgentTool(
       definition = AgentToolDefinition(
         name = "search_unread_articles",
-        description = "RSSの未読記事をタイトル・配信元で語彙検索する。Redditは含まない。最大10件の候補を返す。",
+        description = "RSSの未読記事をタイトル・配信元で語彙検索する。最大10件の候補を返す。",
         arguments = commonSearchArguments(),
       ),
     ) { arguments ->
       formatArticles(
-        articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isNonRedditArticle),
-        arguments.query(),
-        DEFAULT_TOOL_ITEMS,
-      )
-    },
-  ),
-)
-
-private fun redditSkill(
-  articleRepository: ArticleRepository,
-  redditRepository: RedditRepository,
-): AgentSkill = AgentSkill(
-  name = "reddit-reader",
-  description = "購読中のRedditコミュニティ・スレッドとRedditの未読を参照するSkill。",
-  instructions = "Reddit、subreddit、コミュニティ、購読中スレッド、Redditの未読について質問されたときに利用する。読み取り専用で利用する。",
-  tools = listOf(
-    LambdaAgentTool(
-      definition = AgentToolDefinition(
-        name = "list_reddit_subscriptions",
-        description = "購読中のRedditコミュニティとスレッドを一覧・語彙検索する。最大10件の候補を返す。",
-        arguments = commonSearchArguments(),
-      ),
-    ) { arguments ->
-      val subscriptions = rankByQuery(
-        items = redditRepository.listSubscriptions(),
-        query = arguments.query(),
-      ) { subscription ->
-        listOf(
-          RetrievalField(subscription.title, weight = 4),
-          RetrievalField(subscription.kind.name, weight = 2),
-          RetrievalField(subscription.feedUrl),
-        )
-      }
-      formatCollection(subscriptions, DEFAULT_TOOL_ITEMS) { subscription ->
-        "- id=${subscription.id} | title=${subscription.title} | kind=${subscription.kind.name.lowercase()} | feed_url=${subscription.feedUrl} | last_fetched_at=${subscription.lastFetchedAt.orEmpty()} | last_error=${subscription.lastError.orEmpty()}"
-      }
-    },
-    LambdaAgentTool(
-      definition = AgentToolDefinition(
-        name = "search_reddit_unread",
-        description = "Redditの未読投稿・新着コメントをタイトル・配信元で語彙検索する。最大10件の候補を返す。",
-        arguments = commonSearchArguments(),
-      ),
-    ) { arguments ->
-      formatArticles(
-        articleRepository.listUnreadArticles().filter(RedditSourceBoundary::isRedditArticle),
+        articleRepository.listUnreadArticles().filter(::isActiveRssArticle),
         arguments.query(),
         DEFAULT_TOOL_ITEMS,
       )

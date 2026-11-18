@@ -15,12 +15,6 @@ import dev.terashima.yomitorirss.feature.integrated.ui.INTEGRATED_ROUTE
 import dev.terashima.yomitorirss.feature.knowledge.KNOWLEDGE_ROUTE
 import dev.terashima.yomitorirss.feature.library.LIBRARY_ROUTE
 import dev.terashima.yomitorirss.feature.mail.MAIL_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.RedditTab
-import dev.terashima.yomitorirss.feature.reddit.redditTabForRoute
-import dev.terashima.yomitorirss.feature.reddit.routeForRedditTab
 import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_SETTINGS_ROUTE
@@ -94,13 +88,6 @@ class AppNavigationSpecTest {
   }
 
   @Test
-  fun `Redditタブの変換はfeature contractで往復できる`() {
-    RedditTab.entries.forEach { tab ->
-      assertEquals(tab, redditTabForRoute(routeForRedditTab(tab)))
-    }
-  }
-
-  @Test
   fun `ブックマークタブの変換はfeature contractで往復できる`() {
     BookmarkTab.entries.forEach { tab ->
       assertEquals(tab, bookmarkTabForRoute(routeForBookmarkTab(tab)))
@@ -124,8 +111,6 @@ class AppNavigationSpecTest {
       INTEGRATED_ROUTE,
       RSS_UNREAD_ROUTE,
       RSS_READ_LATER_ROUTE,
-      REDDIT_UNREAD_ROUTE,
-      REDDIT_READ_LATER_ROUTE,
       BOOKMARKS_ROUTE,
       BOOKMARK_TAGS_ROUTE,
     )
@@ -154,7 +139,6 @@ class AppNavigationSpecTest {
     val expected = mapOf(
       INTEGRATED_ROUTE to setOf(
         FeatureMessageSource.RSS,
-        FeatureMessageSource.REDDIT,
         FeatureMessageSource.FEED,
         FeatureMessageSource.SUMMARY,
       ),
@@ -170,9 +154,6 @@ class AppNavigationSpecTest {
       ),
       RSS_FEEDS_ROUTE to setOf(FeatureMessageSource.FEED),
       RSS_SETTINGS_ROUTE to setOf(FeatureMessageSource.FEED),
-      REDDIT_UNREAD_ROUTE to setOf(FeatureMessageSource.REDDIT, FeatureMessageSource.SUMMARY),
-      REDDIT_READ_LATER_ROUTE to setOf(FeatureMessageSource.REDDIT, FeatureMessageSource.SUMMARY),
-      REDDIT_SUBSCRIPTIONS_ROUTE to setOf(FeatureMessageSource.REDDIT),
       BOOKMARKS_ROUTE to setOf(FeatureMessageSource.BOOKMARK, FeatureMessageSource.SUMMARY),
       BOOKMARK_TAGS_ROUTE to setOf(FeatureMessageSource.BOOKMARK, FeatureMessageSource.SUMMARY),
       BOOKMARK_FOLDERS_ROUTE to setOf(FeatureMessageSource.BOOKMARK),

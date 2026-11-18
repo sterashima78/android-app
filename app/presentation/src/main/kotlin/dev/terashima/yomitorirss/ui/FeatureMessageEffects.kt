@@ -10,7 +10,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
 import dev.terashima.yomitorirss.feature.backup.BackupViewModel
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkViewModel
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.FeedViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 import dev.terashima.yomitorirss.feature.settings.AiSettingsViewModel
@@ -32,15 +31,6 @@ internal fun FeatureMessageEffects(
     )
     val rssState by rssViewModel.state.collectAsState()
     FeatureMessageEffect(rssState.message, snackbarHostState, rssViewModel::dismissMessage)
-  }
-
-  if (FeatureMessageSource.REDDIT in messageSources) {
-    val redditViewModel: RedditViewModel = viewModel(
-      viewModelStoreOwner = viewModelStoreOwner,
-      factory = routeDependencies.redditViewModelFactory,
-    )
-    val redditState by redditViewModel.state.collectAsState()
-    FeatureMessageEffect(redditState.message, snackbarHostState, redditViewModel::dismissMessage)
   }
 
   if (FeatureMessageSource.FEED in messageSources) {

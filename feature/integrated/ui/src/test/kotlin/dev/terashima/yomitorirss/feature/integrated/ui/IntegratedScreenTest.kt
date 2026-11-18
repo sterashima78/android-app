@@ -8,19 +8,15 @@ class IntegratedScreenTest {
   @Test
   fun `統合ビューのスワイプ操作は各機能の一覧と一致する`() {
     val rss = item(IntegratedSource.RSS)
-    val reddit = item(IntegratedSource.REDDIT)
     val mail = item(IntegratedSource.MAIL, isDeferred = true, isStarred = true)
 
     assertEquals(listOf("既読", "ブックマーク", "あとで読む"), swipeLabels(rss, IntegratedTab.UNREAD))
-    assertEquals(listOf("既読", "ブックマーク", "あとで読む"), swipeLabels(reddit, IntegratedTab.UNREAD))
     assertEquals(listOf("既読", "あとで読む解除", "アーカイブ"), swipeLabels(mail, IntegratedTab.UNREAD))
 
     assertEquals(listOf("ブックマーク解除", "未分類へ", null), swipeLabels(rss, IntegratedTab.READ_LATER))
-    assertEquals(listOf("ブックマーク解除", "未分類へ", null), swipeLabels(reddit, IntegratedTab.READ_LATER))
     assertEquals(listOf("あとで読む解除", "スター解除", "アーカイブ"), swipeLabels(mail, IntegratedTab.READ_LATER))
 
     assertEquals(listOf(null, "未読に戻す", null), swipeLabels(rss, IntegratedTab.HISTORY))
-    assertEquals(listOf(null, "未読に戻す", null), swipeLabels(reddit, IntegratedTab.HISTORY))
     assertEquals(listOf(null, "未読に戻す", null), swipeLabels(mail, IntegratedTab.HISTORY))
 
     assertEquals(listOf(true, false, false), swipeDismisses(mail, IntegratedTab.READ_LATER))
@@ -30,7 +26,6 @@ class IntegratedScreenTest {
   @Test
   fun `RSS未読だけ深い左スワイプで除外参考を利用できる`() {
     val rss = item(IntegratedSource.RSS)
-    val reddit = item(IntegratedSource.REDDIT)
     val mail = item(IntegratedSource.MAIL)
 
     assertEquals("除外参考", integratedSwipeActions(rss, IntegratedTab.UNREAD).farLeft?.label)
@@ -38,7 +33,6 @@ class IntegratedScreenTest {
       IntegratedSwipeOperation.EXCLUSION_REFERENCE,
       integratedSwipeActions(rss, IntegratedTab.UNREAD).farLeft?.operation,
     )
-    assertEquals(null, integratedSwipeActions(reddit, IntegratedTab.UNREAD).farLeft)
     assertEquals(null, integratedSwipeActions(mail, IntegratedTab.UNREAD).farLeft)
     assertEquals(null, integratedSwipeActions(rss, IntegratedTab.READ_LATER).farLeft)
     assertEquals(null, integratedSwipeActions(rss, IntegratedTab.HISTORY).farLeft)
@@ -47,11 +41,9 @@ class IntegratedScreenTest {
   @Test
   fun `RSS未読だけ意図的な深い左スワイプ設定を使う`() {
     val rss = item(IntegratedSource.RSS)
-    val reddit = item(IntegratedSource.REDDIT)
     val mail = item(IntegratedSource.MAIL)
 
     assertEquals(SwipeBehavior.DeliberateFarAction, integratedLeftSwipeBehavior(rss, IntegratedTab.UNREAD))
-    assertEquals(SwipeBehavior.Default, integratedLeftSwipeBehavior(reddit, IntegratedTab.UNREAD))
     assertEquals(SwipeBehavior.Default, integratedLeftSwipeBehavior(mail, IntegratedTab.UNREAD))
     assertEquals(SwipeBehavior.Default, integratedLeftSwipeBehavior(rss, IntegratedTab.READ_LATER))
   }
@@ -68,9 +60,9 @@ class IntegratedScreenTest {
   }
 
   @Test
-  fun `統合ビューのsourceはRSS Reddit メールだけを持つ`() {
+  fun `統合ビューのsourceはRSSとメールだけを持つ`() {
     assertEquals(
-      listOf(IntegratedSource.ALL, IntegratedSource.RSS, IntegratedSource.REDDIT, IntegratedSource.MAIL),
+      listOf(IntegratedSource.ALL, IntegratedSource.RSS, IntegratedSource.MAIL),
       IntegratedSource.entries,
     )
   }

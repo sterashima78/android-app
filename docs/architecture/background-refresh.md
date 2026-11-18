@@ -4,7 +4,7 @@
 
 ## Integrated periodic refresh
 
-通常feed、Reddit、購読型動画Provider、メールの周期更新は `:app:composition` の application-scope WorkManager job が所有する。購読型動画Providerの更新は Video Context の新着状態を保つために同じjobで実行するが、統合ビューの表示対象と新着通知対象には含めない。
+通常feed、購読型動画Provider、メールの周期更新は `:app:composition` の application-scope WorkManager job が所有する。購読型動画Providerの更新は Video Context の新着状態を保つために同じjobで実行するが、統合ビューの表示対象と新着通知対象には含めない。
 
 ```text
 Application startup / Settings
@@ -18,7 +18,7 @@ integrated-view-periodic-refresh
           v
 IntegratedRefreshWorker
   |        |          |        |
- RSS     Reddit   Video Provider   Mail
+ RSS       Video Provider      Mail
 ```
 
 - durable job は `integrated-view-periodic-refresh` という unique periodic work とする。
@@ -70,7 +70,7 @@ Imported subscriptions without a fetched response retain `last_fetched_at = null
 ```text
 before integrated-view unread identities
         |
-        | refresh RSS / Reddit / Video Provider / Mail
+        | refresh RSS / Video Provider / Mail
         v
 after integrated-view unread identities
         |
@@ -80,7 +80,7 @@ after - before = newly fetched integrated-view unread identities
 
 identity namespace は source 間衝突を避ける。
 
-- RSS / Reddit: `article:<articleId>`
+- RSS: `article:<articleId>`
 - Mail: `mail:<accountId>:<threadId>`
 
 新着 identity が空なら通知を更新しない。これにより既存未読だけを周期ごとに再通知しない。

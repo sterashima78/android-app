@@ -4,7 +4,7 @@ import dev.terashima.yomitorirss.feature.article.ArticleRepository
 import dev.terashima.yomitorirss.feature.article.ContentType
 import dev.terashima.yomitorirss.feature.article.allowsAutomaticAiEnrichment
 import dev.terashima.yomitorirss.feature.bookmark.BookmarkReader
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
 
 class BookmarkAutoEnrichmentUseCase(
   private val articleRepository: ArticleRepository,
@@ -48,8 +48,8 @@ fun shouldRequestBookmarkEnrichment(
 ): Boolean =
   contentType.allowsAutomaticAiEnrichment() &&
     !PROVIDER_VIDEO_URL_REGEX.containsMatchIn(url) &&
-    RedditSourceBoundary.isNonRedditFeed(sourceFeedUrl) &&
-    RedditSourceBoundary.isNonRedditFeed(url)
+    !isRetiredRedditFeedUrl(sourceFeedUrl) &&
+    !isRetiredRedditFeedUrl(url)
 
 private suspend fun BookmarkReader.listAutomaticEnrichmentArticleIds(): List<String> =
   listAllSavedArticles()

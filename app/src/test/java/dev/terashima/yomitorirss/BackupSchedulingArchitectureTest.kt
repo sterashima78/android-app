@@ -12,7 +12,6 @@ class BackupSchedulingArchitectureTest {
     val paths = listOf(
       "feature/rss/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/RssViewModel.kt",
       "feature/rss/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/rss/FeedViewModel.kt",
-      "feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/RedditViewModel.kt",
       "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/BookmarkViewModel.kt",
       "feature/video/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/video/ui/VideoViewModel.kt",
       "feature/integrated/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/integrated/ui/IntegratedRoute.kt",

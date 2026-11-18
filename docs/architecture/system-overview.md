@@ -12,7 +12,7 @@ Mosaic は、端末内に個人情報を集約し、source 固有の意味を保
 
 | Area | Capability | 主な owner / context |
 | --- | --- | --- |
-| Content ingestion | RSS / Atom、Reddit、YouTube、Web由来コンテンツ | RSS / Reddit / YouTube / Content |
+| Content ingestion | RSS / Atom、YouTube、Web由来コンテンツ | RSS / YouTube / Content |
 | Curation | Bookmark、あとで読む、Tag、Folder | Curation (`feature:bookmark`) |
 | Generated content | Summary、metadata補完、Knowledge | Summary / Knowledge |
 | Audio playback | 保存済み要約の端末内TTS、連続再生、media session | Audio |
@@ -76,7 +76,7 @@ Evidence:
 ### 3.1 Content -> Curation -> Generated content
 
 ```text
-RSS / Reddit / YouTube / shared Web content
+RSS / YouTube / shared Web content
                  |
                  v
              Content

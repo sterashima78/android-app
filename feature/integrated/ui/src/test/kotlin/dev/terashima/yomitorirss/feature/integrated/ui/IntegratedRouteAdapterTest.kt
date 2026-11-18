@@ -5,9 +5,6 @@ import dev.terashima.yomitorirss.feature.bookmark.BookmarkedArticle
 import dev.terashima.yomitorirss.feature.mail.MailAccount
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailUiState
-import dev.terashima.yomitorirss.feature.reddit.RedditSubscription
-import dev.terashima.yomitorirss.feature.reddit.RedditSubscriptionKind
-import dev.terashima.yomitorirss.feature.reddit.RedditUiState
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationAssessment
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationPolicy
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationUnscoredReason
@@ -21,12 +18,10 @@ class IntegratedRouteAdapterTest {
   @Test
   fun `各機能の未処理アイテムを時刻の新しい順に統合する`() {
     val rss = article("rss", "2026-08-11T09:00:00Z")
-    val reddit = article("reddit", "2026-08-11T10:00:00Z")
     val mail = mail("mail", "2026-08-11T12:00:00Z", isUnread = true)
 
     val entries = integratedEntries(
       rssState = RssUiState(initialized = true, unread = listOf(rss)),
-      redditState = RedditUiState(initialized = true, unread = listOf(reddit)),
       mailState = MailUiState(
         initialized = true,
         accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
@@ -35,7 +30,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf(IntegratedSource.MAIL, IntegratedSource.REDDIT, IntegratedSource.RSS),
+      listOf(IntegratedSource.MAIL, IntegratedSource.RSS),
       entries.map { it.item.source },
     )
     assertEquals("user@example.com · snippet", entries.first().item.subtitle)
@@ -67,7 +62,6 @@ class IntegratedRouteAdapterTest {
           ),
         ),
       ),
-      redditState = RedditUiState(initialized = true),
       mailState = MailUiState(initialized = true),
     )
 
@@ -85,7 +79,6 @@ class IntegratedRouteAdapterTest {
     val high = article("high", "2026-08-11T09:00:00Z")
     val low = article("low", "2026-08-11T14:00:00Z")
     val unscored = article("unscored", "2026-08-11T17:00:00Z")
-    val reddit = article("reddit", "2026-08-11T16:00:00Z")
     val mail = mail("mail", "2026-08-11T18:00:00Z", isUnread = true)
     val rssState = RssUiState(
       initialized = true,
@@ -96,19 +89,18 @@ class IntegratedRouteAdapterTest {
         low.id to RssRecommendationAssessment.Scored(score = 2, revision = 3L, assessedAt = 1L),
       ),
     )
-    val redditState = RedditUiState(initialized = true, unread = listOf(reddit))
     val mailState = MailUiState(initialized = true, threads = listOf(mail))
 
-    val newest = integratedEntries(rssState, redditState, mailState, newestFirst = true)
+    val newest = integratedEntries(rssState, mailState, newestFirst = true)
     assertEquals(
-      listOf("rss:high", "rss:low", "mail:account:mail", "rss:unscored", "reddit:reddit"),
+      listOf("rss:high", "rss:low", "mail:account:mail", "rss:unscored"),
       newest.map { it.item.key },
     )
-    assertEquals(listOf(9, 2, null, null, null), newest.map { it.item.recommendationScore })
+    assertEquals(listOf(9, 2, null, null), newest.map { it.item.recommendationScore })
 
-    val oldest = integratedEntries(rssState, redditState, mailState, newestFirst = false)
+    val oldest = integratedEntries(rssState, mailState, newestFirst = false)
     assertEquals(
-      listOf("rss:high", "rss:low", "reddit:reddit", "rss:unscored", "mail:account:mail"),
+      listOf("rss:high", "rss:low", "rss:unscored", "mail:account:mail"),
       oldest.map { it.item.key },
     )
   }
@@ -116,7 +108,6 @@ class IntegratedRouteAdapterTest {
   @Test
   fun `あとで読むアイテムを各機能から古い順に統合する`() {
     val rss = article("rss-later", "2026-08-11T09:00:00Z")
-    val reddit = article("reddit-later", "2026-08-11T10:00:00Z")
     val mail = mail(
       "mail-later",
       "2026-08-11T12:00:00Z",
@@ -129,10 +120,6 @@ class IntegratedRouteAdapterTest {
         initialized = true,
         readLater = listOf(BookmarkedArticle(article = rss, savedAt = "2026-08-11T09:05:00Z")),
       ),
-      redditState = RedditUiState(
-        initialized = true,
-        readLater = listOf(BookmarkedArticle(article = reddit, savedAt = "2026-08-11T10:05:00Z")),
-      ),
       mailState = MailUiState(
         initialized = true,
         accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
@@ -142,7 +129,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf(IntegratedSource.RSS, IntegratedSource.REDDIT, IntegratedSource.MAIL),
+      listOf(IntegratedSource.RSS, IntegratedSource.MAIL),
       entries.map { it.item.source },
     )
     assertEquals(true, entries.last().item.isDeferred)
@@ -151,12 +138,10 @@ class IntegratedRouteAdapterTest {
   @Test
   fun `履歴を各機能から新しい順に統合し記事は既読日時を優先する`() {
     val rss = article("rss-history", "2026-08-11T09:00:00Z").copy(readAt = "2026-08-11T17:00:00Z")
-    val reddit = article("reddit-history", "2026-08-11T10:00:00Z").copy(readAt = "2026-08-11T14:00:00Z")
     val mail = mail("mail-history", "2026-08-11T16:00:00Z", isUnread = false)
 
     val entries = integratedEntries(
       rssState = RssUiState(initialized = true, history = listOf(rss)),
-      redditState = RedditUiState(initialized = true, history = listOf(reddit)),
       mailState = MailUiState(
         initialized = true,
         accounts = listOf(MailAccount(id = "account", email = "user@example.com")),
@@ -166,7 +151,7 @@ class IntegratedRouteAdapterTest {
     )
 
     assertEquals(
-      listOf(IntegratedSource.RSS, IntegratedSource.MAIL, IntegratedSource.REDDIT),
+      listOf(IntegratedSource.RSS, IntegratedSource.MAIL),
       entries.map { it.item.source },
     )
     assertEquals(Instant.parse("2026-08-11T17:00:00Z").toEpochMilli(), entries.first().item.timestamp)
@@ -179,7 +164,6 @@ class IntegratedRouteAdapterTest {
 
     val entries = integratedEntries(
       rssState = RssUiState(initialized = true),
-      redditState = RedditUiState(initialized = true),
       mailState = MailUiState(initialized = true, threads = listOf(unread, archivedRead)),
       tab = IntegratedTab.HISTORY,
     )
@@ -198,7 +182,6 @@ class IntegratedRouteAdapterTest {
         unread = listOf(hidden),
         hiddenArticleIds = setOf(hidden.id),
       ),
-      redditState = RedditUiState(initialized = true),
       mailState = MailUiState(initialized = true, threads = listOf(archivedUnread)),
     )
 
@@ -210,76 +193,12 @@ class IntegratedRouteAdapterTest {
     val rss = article("rss-target", "2026-08-11T09:00:00Z")
     val entry = integratedEntries(
       rssState = RssUiState(initialized = true, unread = listOf(rss)),
-      redditState = RedditUiState(initialized = true),
       mailState = MailUiState(initialized = true),
     ).single()
 
     assertEquals("rss:rss-target", entry.item.key)
     assertEquals(IntegratedTarget.Rss(rss), entry.target)
   }
-
-  @Test
-  fun `補助メニューは統合UIではなく元機能の対象から構築する`() {
-    val rss = article("rss-menu", "2026-08-11T09:00:00Z")
-    val redditArticle = article("reddit-menu", "2026-08-11T10:00:00Z").copy(
-      url = "https://www.reddit.com/r/androiddev/comments/abc123/sample/",
-    )
-    val redditState = RedditUiState(
-      initialized = true,
-      subscriptions = listOf(
-        RedditSubscription(
-          id = "thread",
-          title = "thread",
-          feedUrl = "https://www.reddit.com/r/androiddev/comments/abc123/sample/.rss",
-          kind = RedditSubscriptionKind.THREAD,
-          lastFetchedAt = null,
-          lastError = null,
-        ),
-      ),
-    )
-
-    assertEquals(
-      listOf("はてなブックマークコメントを見る"),
-      actionLabels(IntegratedTarget.Rss(rss), redditState),
-    )
-    assertEquals(
-      listOf("はてなブックマークコメントを見る", "要約", "スレッドの購読を解除"),
-      actionLabels(IntegratedTarget.Reddit(redditArticle), redditState),
-    )
-  }
-
-  @Test
-  fun `Redditの要約アクションは元記事を要約対象として渡す`() {
-    val redditArticle = article("reddit-summary", "2026-08-11T10:00:00Z").copy(
-      url = "https://www.reddit.com/r/androiddev/comments/abc123/sample/",
-    )
-    var summarized: Article? = null
-
-    val actions = integratedItemActions(
-      target = IntegratedTarget.Reddit(redditArticle),
-      redditState = RedditUiState(initialized = true),
-      onOpenArticle = {},
-      onSummarize = { summarized = it },
-      onSubscribeRedditThread = {},
-      onUnsubscribeRedditThread = {},
-    )
-
-    actions.single { it.label == "要約" }.action()
-
-    assertEquals(redditArticle, summarized)
-  }
-
-  private fun actionLabels(
-    target: IntegratedTarget,
-    redditState: RedditUiState,
-  ): List<String> = integratedItemActions(
-    target = target,
-    redditState = redditState,
-    onOpenArticle = {},
-    onSummarize = {},
-    onSubscribeRedditThread = {},
-    onUnsubscribeRedditThread = {},
-  ).map(IntegratedItemAction::label)
 
   private fun article(id: String, publishedAt: String): Article = Article(
     id = id,

@@ -19,7 +19,7 @@ import dev.terashima.yomitorirss.core.background.BackgroundDataFetchPreferences
 import dev.terashima.yomitorirss.core.background.backgroundDataFetchConstraints
 import dev.terashima.yomitorirss.feature.mail.Mailbox
 import dev.terashima.yomitorirss.feature.rss.FeedRefreshMode
-import dev.terashima.yomitorirss.feature.reddit.RedditSourceBoundary
+import dev.terashima.yomitorirss.feature.rss.isRetiredRedditFeedUrl
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 
@@ -47,10 +47,9 @@ internal class IntegratedRefreshWorker(
   private suspend fun refreshSources() {
     runIsolatedRefresh {
       val feeds = container.feedRepository.listFeeds()
-        .filter { RedditSourceBoundary.isNonRedditFeed(it.feedUrl) }
+        .filter { !isRetiredRedditFeedUrl(it.feedUrl) }
       container.refreshFeedsUseCase(feeds, onProgress = { _, _ -> }, mode = FeedRefreshMode.SCHEDULED)
     }
-    runIsolatedRefresh { container.redditRepository.refreshAll { _, _ -> } }
     runIsolatedRefresh { container.videoProviderRepository.refreshProviders() }
     runIsolatedRefresh { container.mailRepository.sync(accountId = null) }
   }
@@ -133,7 +132,7 @@ private class IntegratedRefreshNotifier(
         "統合ビューの新着",
         NotificationManager.IMPORTANCE_DEFAULT,
       ).apply {
-        description = "RSS・Reddit・メールの新しい未読アイテム"
+        description = "RSS・メールの新しい未読アイテム"
         setShowBadge(true)
       },
     )

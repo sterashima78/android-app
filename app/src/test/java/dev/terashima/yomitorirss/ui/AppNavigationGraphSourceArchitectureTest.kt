@@ -25,7 +25,6 @@ class AppNavigationGraphSourceArchitectureTest {
     listOf(
       "registerHomeDestination(",
       "registerRssDestinations(",
-      "registerRedditDestinations(",
       "registerBookmarkDestinations(",
       "registerSingleFeatureDestinations(",
     ).forEach { registration ->
@@ -42,7 +41,6 @@ class AppNavigationGraphSourceArchitectureTest {
     val graphFiles = listOf(
       "AppHomeNavGraph.kt",
       "AppRssNavGraph.kt",
-      "AppRedditNavGraph.kt",
       "AppBookmarkNavGraph.kt",
       "AppSingleFeatureNavGraph.kt",
     )
@@ -62,7 +60,6 @@ class AppNavigationGraphSourceArchitectureTest {
     listOf(
       "AppHomeNavGraph.kt",
       "AppRssNavGraph.kt",
-      "AppRedditNavGraph.kt",
       "AppBookmarkNavGraph.kt",
       "AppSingleFeatureNavGraph.kt",
     ).forEach { fileName ->

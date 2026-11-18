@@ -3,7 +3,6 @@ package dev.terashima.yomitorirss.feature.integrated.ui
 import dev.terashima.yomitorirss.feature.article.Article
 import dev.terashima.yomitorirss.feature.mail.MailThread
 import dev.terashima.yomitorirss.feature.mail.MailViewModel
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.RssViewModel
 
 internal data class IntegratedArticleTargetActions(
@@ -25,7 +24,6 @@ internal data class IntegratedMailTargetActions(
 
 internal class IntegratedTargetDispatcher(
   private val rss: IntegratedArticleTargetActions,
-  private val reddit: IntegratedArticleTargetActions,
   private val mail: IntegratedMailTargetActions,
   private val onOpenArticle: (Article) -> Unit,
   private val onOpenMail: (MailThread) -> Unit,
@@ -33,7 +31,6 @@ internal class IntegratedTargetDispatcher(
   fun markProcessed(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.markRead(target.article)
-      is IntegratedTarget.Reddit -> reddit.markRead(target.article)
       is IntegratedTarget.Mail -> mail.toggleRead(target.thread)
       null -> Unit
     }
@@ -46,7 +43,6 @@ internal class IntegratedTargetDispatcher(
   fun markUnread(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.markUnread(target.article)
-      is IntegratedTarget.Reddit -> reddit.markUnread(target.article)
       is IntegratedTarget.Mail -> mail.toggleRead(target.thread)
       null -> Unit
     }
@@ -55,7 +51,6 @@ internal class IntegratedTargetDispatcher(
   fun save(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.saveAndRead(target.article)
-      is IntegratedTarget.Reddit -> reddit.saveAndRead(target.article)
       is IntegratedTarget.Mail,
       null -> Unit
     }
@@ -64,7 +59,6 @@ internal class IntegratedTargetDispatcher(
   fun defer(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.readLater(target.article)
-      is IntegratedTarget.Reddit -> reddit.readLater(target.article)
       is IntegratedTarget.Mail -> mail.toggleReadLater(target.thread)
       null -> Unit
     }
@@ -73,7 +67,6 @@ internal class IntegratedTargetDispatcher(
   fun unsave(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.unsave(target.article)
-      is IntegratedTarget.Reddit -> reddit.unsave(target.article)
       is IntegratedTarget.Mail,
       null -> Unit
     }
@@ -82,7 +75,6 @@ internal class IntegratedTargetDispatcher(
   fun removeDeferred(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> rss.removeReadLater(target.article)
-      is IntegratedTarget.Reddit -> reddit.removeReadLater(target.article)
       is IntegratedTarget.Mail -> mail.toggleReadLater(target.thread)
       null -> Unit
     }
@@ -99,7 +91,6 @@ internal class IntegratedTargetDispatcher(
   fun open(target: IntegratedTarget?) {
     when (target) {
       is IntegratedTarget.Rss -> onOpenArticle(target.article)
-      is IntegratedTarget.Reddit -> onOpenArticle(target.article)
       is IntegratedTarget.Mail -> onOpenMail(target.thread)
       null -> Unit
     }
@@ -108,7 +99,6 @@ internal class IntegratedTargetDispatcher(
 
 internal fun integratedTargetDispatcher(
   rssViewModel: RssViewModel,
-  redditViewModel: RedditViewModel,
   mailViewModel: MailViewModel,
   onOpenArticle: (Article) -> Unit,
   onOpenMail: (MailThread) -> Unit,
@@ -121,14 +111,6 @@ internal fun integratedTargetDispatcher(
     readLater = rssViewModel::readLater,
     unsave = rssViewModel::unsave,
     removeReadLater = rssViewModel::removeReadLater,
-  ),
-  reddit = IntegratedArticleTargetActions(
-    markRead = redditViewModel::markRead,
-    markUnread = redditViewModel::markUnread,
-    saveAndRead = redditViewModel::saveAndRead,
-    readLater = redditViewModel::readLater,
-    unsave = redditViewModel::unsave,
-    removeReadLater = redditViewModel::removeReadLater,
   ),
   mail = IntegratedMailTargetActions(
     toggleRead = mailViewModel::toggleRead,

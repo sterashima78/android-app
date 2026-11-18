@@ -12,23 +12,18 @@ class IntegratedTargetDispatcherTest {
     val calls = mutableListOf<String>()
     val dispatcher = dispatcher(calls)
     val rss = article("rss")
-    val reddit = article("reddit")
     val mail = mail("mail")
 
     dispatcher.markProcessed(IntegratedTarget.Rss(rss))
-    dispatcher.markProcessed(IntegratedTarget.Reddit(reddit))
     dispatcher.markProcessed(IntegratedTarget.Mail(mail))
     dispatcher.defer(IntegratedTarget.Rss(rss))
-    dispatcher.defer(IntegratedTarget.Reddit(reddit))
     dispatcher.defer(IntegratedTarget.Mail(mail))
 
     assertEquals(
       listOf(
         "rss:read:rss",
-        "reddit:read:reddit",
         "mail:read:mail",
         "rss:later:rss",
-        "reddit:later:reddit",
         "mail:later:mail",
       ),
       calls,
@@ -40,11 +35,9 @@ class IntegratedTargetDispatcherTest {
     val calls = mutableListOf<String>()
     val dispatcher = dispatcher(calls)
     val rss = article("rss")
-    val reddit = article("reddit")
     val mail = mail("mail")
 
     dispatcher.markAsExclusionReference(IntegratedTarget.Rss(rss))
-    dispatcher.markAsExclusionReference(IntegratedTarget.Reddit(reddit))
     dispatcher.markAsExclusionReference(IntegratedTarget.Mail(mail))
     dispatcher.markAsExclusionReference(null)
 
@@ -73,14 +66,6 @@ class IntegratedTargetDispatcherTest {
       readLater = { calls += "rss:later:${it.id}" },
       unsave = { calls += "rss:unsave:${it.id}" },
       removeReadLater = { calls += "rss:remove-later:${it.id}" },
-    ),
-    reddit = IntegratedArticleTargetActions(
-      markRead = { calls += "reddit:read:${it.id}" },
-      markUnread = { calls += "reddit:unread:${it.id}" },
-      saveAndRead = { calls += "reddit:save:${it.id}" },
-      readLater = { calls += "reddit:later:${it.id}" },
-      unsave = { calls += "reddit:unsave:${it.id}" },
-      removeReadLater = { calls += "reddit:remove-later:${it.id}" },
     ),
     mail = IntegratedMailTargetActions(
       toggleRead = { calls += "mail:read:${it.id}" },

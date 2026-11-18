@@ -69,7 +69,7 @@ API 35 以上で常に成立する framework 契約は直接表現する。代�
 LAN Web Server は `:feature:web:data` が所有し、read-only HTTP contract を維持する。単一 class に transport、Repository read、HTML rendering を集約せず、次の責務へ分ける。
 
 - `LanWebServer`: socket transport、HTTP request parsing、LAN/client validation、token/cookie authentication、route dispatch、security response headers
-- `LanWebReadModel`: owner Repository contract からの read-only page model 構築と RSS/Reddit presentation classification
+- `LanWebReadModel`: owner Repository contract からの read-only page model 構築と 通常フィードの表示用データ構築
 - `LanWebRenderer`: typed page model からの HTML rendering と escaping
 
 認証は service 起動単位の bootstrap / session token とする。bootstrap token は永続化せず、初回 URL の query parameter で一度だけ使用する。認証成功時は同じ同期処理で session token を生成して `HttpOnly; SameSite=Strict` Cookie に設定し、token を除去した URL へ redirect する。LAN IPv4 address が変化した場合は bootstrap token をローテーションし、新しい origin から再認証できるようにする。server 停止時は bootstrap / session token の双方を失効する。

@@ -19,7 +19,6 @@ data class LanWebArticleItem(
   val url: String,
   val sourceTitle: String,
   val publishedAt: String,
-  val sourceKind: LanWebSourceKind,
   val tagNames: List<String> = emptyList(),
 )
 
@@ -27,10 +26,5 @@ data class LanWebFeedItem(
   val title: String,
   val feedUrl: String,
   val siteUrl: String?,
-  val sourceKind: LanWebSourceKind,
 )
 
-enum class LanWebSourceKind {
-  RSS,
-  REDDIT,
-}

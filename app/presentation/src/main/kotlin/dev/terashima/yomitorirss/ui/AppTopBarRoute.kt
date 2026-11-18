@@ -8,11 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.terashima.yomitorirss.AppRouteDependencies
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_READ_LATER_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_SUBSCRIPTIONS_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.REDDIT_UNREAD_ROUTE
-import dev.terashima.yomitorirss.feature.reddit.RedditRouteController
-import dev.terashima.yomitorirss.feature.reddit.RedditViewModel
 import dev.terashima.yomitorirss.feature.rss.RSS_FEEDS_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_READ_LATER_ROUTE
 import dev.terashima.yomitorirss.feature.rss.RSS_UNREAD_ROUTE
@@ -26,7 +21,6 @@ internal fun AppTopBarRoute(
   viewModelStoreOwner: ViewModelStoreOwner,
   routeDependencies: AppRouteDependencies,
   rssController: RssRouteController,
-  redditController: RedditRouteController,
   onOpenDrawer: () -> Unit,
 ) {
   if (!selectedRoute.usesGlobalTopBar()) return
@@ -90,35 +84,6 @@ internal fun AppTopBarRoute(
           )
         },
         onAddFeed = rssController::requestAddFeed,
-        onOpenDrawer = onOpenDrawer,
-      )
-    }
-
-    REDDIT_UNREAD_ROUTE -> {
-      val redditViewModel: RedditViewModel = viewModel(
-        viewModelStoreOwner = viewModelStoreOwner,
-        factory = routeDependencies.redditViewModelFactory,
-      )
-      val redditState by redditViewModel.state.collectAsState()
-      AppTopBar(
-        selectedRoute = selectedRoute,
-        refreshProgress = redditState.refreshProgress,
-        hasUnread = redditState.unread.isNotEmpty(),
-        onMarkAllRead = redditController::requestMarkAllRead,
-        onOpenDrawer = onOpenDrawer,
-      )
-    }
-
-    REDDIT_READ_LATER_ROUTE,
-    REDDIT_SUBSCRIPTIONS_ROUTE -> {
-      val redditViewModel: RedditViewModel = viewModel(
-        viewModelStoreOwner = viewModelStoreOwner,
-        factory = routeDependencies.redditViewModelFactory,
-      )
-      val redditState by redditViewModel.state.collectAsState()
-      AppTopBar(
-        selectedRoute = selectedRoute,
-        refreshProgress = redditState.refreshProgress,
         onOpenDrawer = onOpenDrawer,
       )
     }

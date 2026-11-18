@@ -25,10 +25,8 @@ class FeatureNavigationMetadataSourceArchitectureTest {
 
     listOf(
       "internal fun String.rssTab",
-      "internal fun String.redditTab",
       "internal fun String.bookmarkTab",
       "internal fun RssTab.appRoute",
-      "internal fun RedditTab.appRoute",
       "internal fun BookmarkTab.appRoute",
     ).forEach { legacyMapping ->
       assertFalse("app presentation must not redefine feature-local navigation metadata: $legacyMapping", legacyMapping in appSpec)
@@ -36,7 +34,6 @@ class FeatureNavigationMetadataSourceArchitectureTest {
 
     listOf(
       "rssDestinationTitle(this)",
-      "redditDestinationTitle(this)",
       "bookmarkDestinationTitle(this)",
     ).forEach { featureTitleContract ->
       assertTrue("app title composition must consume feature metadata: $featureTitleContract", featureTitleContract in appSpec)
@@ -45,8 +42,6 @@ class FeatureNavigationMetadataSourceArchitectureTest {
     listOf(
       "rssTabForRoute(selectedRoute)",
       "routeForRssTab(tab)",
-      "redditTabForRoute(selectedRoute)",
-      "routeForRedditTab(tab)",
       "bookmarkTabForRoute(selectedRoute)",
       "routeForBookmarkTab(tab)",
     ).forEach { featureTabContract ->
@@ -58,11 +53,6 @@ class FeatureNavigationMetadataSourceArchitectureTest {
         "fun rssTabForRoute(",
         "fun routeForRssTab(",
         "fun rssDestinationTitle(",
-      ),
-      "feature/reddit/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/reddit/NavigationDestination.kt" to listOf(
-        "fun redditTabForRoute(",
-        "fun routeForRedditTab(",
-        "fun redditDestinationTitle(",
       ),
       "feature/bookmark/ui/src/main/kotlin/dev/terashima/yomitorirss/feature/bookmark/NavigationDestination.kt" to listOf(
         "fun bookmarkTabForRoute(",

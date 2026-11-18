@@ -180,7 +180,6 @@ class AppContainer(
       bookmarkContentQuery = contentRuntime.bookmarkContentQuery,
       bookmarkRepository = contentRuntime.bookmarkRepository,
       feedRepository = contentRuntime.feedRepository,
-      redditRepository = contentRuntime.redditRepository,
       rssRecommendationTaskReader = contentRuntime.rssRecommendationRepository,
       rssRecommendationTaskScheduler = contentRuntime.rssRecommendationTaskScheduler,
       summaryRepository = aiCoreRuntime.summaryRepository,
@@ -228,7 +227,6 @@ class AppContainer(
   internal val rssRecommendationService get() = contentRuntime.rssRecommendationService
   internal val rssRecommendationRepository get() = contentRuntime.rssRecommendationRepository
   internal val rssRecommendationTaskScheduler get() = contentRuntime.rssRecommendationTaskScheduler
-  val redditRepository get() = contentRuntime.redditRepository
   val videoProviderRepository get() = videoRuntime.providerRepository
   val feedImportRepository get() = contentRuntime.feedImportRepository
   val refreshFeedsUseCase get() = contentRuntime.refreshFeedsUseCase

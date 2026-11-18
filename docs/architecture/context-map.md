@@ -7,15 +7,13 @@ Gradle の `feature/<name>` は ownership / build boundary であり、Bounded C
 ## Content around contexts
 
 ```text
-+----------------------+        +----------------------+
-| RSS context          |        | Reddit context       |
-| Feed / FeedFolder    |        | source-specific data |
-+----------+-----------+        +----------+-----------+
-           |                               |
-           | content identity / metadata   |
-           +---------------+---------------+
-                           |
-                           v
+              +----------------------+
+              | RSS context          |
+              | Feed / FeedFolder    |
+              +----------+-----------+
+                         |
+                         | content identity / metadata
+                         v
                   +------------------+
                   | Content context  |
                   | ContentItem      |
@@ -101,7 +99,7 @@ Bookmark は ContentItemId を参照する。`savedAt` の正規 persistence は
 
 Bookmark から Web Library への移動は Curation-owned `MoveBookmarkToLibraryUseCase` が所有する。Bookmark domain は Library domain の narrow `WebLibraryAdder` capability だけに一方向依存し、移動先の作成成功後に Bookmark を解除する。Library から Bookmark への逆方向移動は提供しない。
 
-### Source contexts: RSS / Reddit
+### Source contexts: RSS
 
 Content の上流 Source Context として扱う。各 Source 固有の subscription、synchronization / fetch state、authentication、external API / site semantics、source-specific metadata は各 Context が所有する。
 

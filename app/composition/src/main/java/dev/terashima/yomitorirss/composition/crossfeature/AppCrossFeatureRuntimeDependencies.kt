@@ -17,7 +17,6 @@ import dev.terashima.yomitorirss.feature.knowledge.KnowledgeBuildTaskController
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeExecutionSettings
 import dev.terashima.yomitorirss.feature.knowledge.KnowledgeReader
 import dev.terashima.yomitorirss.feature.podcast.PodcastGenerationTaskReader
-import dev.terashima.yomitorirss.feature.reddit.RedditRepository
 import dev.terashima.yomitorirss.feature.rss.FeedRepository
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskReader
 import dev.terashima.yomitorirss.feature.rss.RssRecommendationTaskScheduler
@@ -37,7 +36,6 @@ internal class AppCrossFeatureRuntimeDependencies(
   private val bookmarkContentQuery: BookmarkContentQuery,
   private val bookmarkRepository: BookmarkRepository,
   private val feedRepository: FeedRepository,
-  private val redditRepository: RedditRepository,
   private val rssRecommendationTaskReader: RssRecommendationTaskReader,
   private val rssRecommendationTaskScheduler: RssRecommendationTaskScheduler,
   private val summaryRepository: SummaryRepository,
@@ -55,7 +53,6 @@ internal class AppCrossFeatureRuntimeDependencies(
         articleRepository = articleRepository,
         bookmarkRepository = bookmarkRepository,
         feedRepository = feedRepository,
-        redditRepository = redditRepository,
         summaryRepository = summaryRepository,
         taskRepository = taskRepository,
       ) + createKnowledgeLibraryResourceSkills(

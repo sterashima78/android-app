@@ -76,7 +76,7 @@ Architecture Decision Record。特定時点で「なぜその設計判断をし�
 
 ### Content Context
 
-RSS、Reddit、YouTube、shared URL 等の source から得られる「読める/参照できる content」そのものの identity、metadata、reading state 等を扱う Context。
+RSS、YouTube、shared URL 等の source から得られる「読める/参照できる content」そのものの identity、metadata、reading state 等を扱う Context。
 
 ### ContentItem
 
@@ -88,7 +88,7 @@ Content Context 上の中心概念。現在のコードでは主に `Article` �
 
 ### Source Context
 
-Content の上流で source-specific subscription、sync、authentication、external semantics を所有する Context。現在は RSS、Reddit、YouTube 等を別 Context として扱う。
+Content の上流で source-specific subscription、sync、authentication、external semantics を所有する Context。現在は RSS、YouTube 等を別 Context として扱う。
 
 ### Curation Context
 

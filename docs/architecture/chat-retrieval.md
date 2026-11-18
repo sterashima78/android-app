@@ -4,7 +4,7 @@
 
 ## Role
 
-Chat は一般的な対話に加え、RSS、Reddit、保存記事、既読履歴、Task、Knowledge Wiki、Library 等、アプリ内に収集した情報を再発見する retrieval orchestrator として振る舞う。
+Chat は一般的な対話に加え、RSS、保存記事、既読履歴、Task、Knowledge Wiki、Library 等、アプリ内に収集した情報を再発見する retrieval orchestrator として振る舞う。
 
 Chat 自身は他 Context の durable data を所有しない。各情報源は `AgentSkill` / `AgentTool` を通じて、owner Context の Repository または purpose-specific read-only Query API へ接続する。Chat data layer から foreign table を直接 read/write しない。
 
@@ -45,7 +45,7 @@ Knowledge は owner `KnowledgeReader.listPages(query)` が title と body markdo
 
 同一の情報要求に対する言い換えは model policy 上最大2回とする。専用の rewrite inference request は追加せず、既存の Local Chat conversation が tool result を見て次の tool call を選ぶ。
 
-この方針は RSS / Reddit / Bookmark / History / Task / Knowledge / Library で共有する。
+この方針は RSS / Bookmark / History / Task / Knowledge / Library で共有する。
 
 ## Candidate and detail
 
